@@ -1,0 +1,127 @@
+const { Sequelize, DataTypes, Op } = require('sequelize');
+const cls = require('cls-hooked');
+const namespace = cls.createNamespace('my-very-own-namespace');
+Sequelize.useCLS(namespace);
+const mysql = require('mysql2/promise');
+
+function getDecimalValue(fieldName) {
+    return function() {
+        const value = this.getDataValue(fieldName);
+        return value === null ? null : parseFloat(value);
+    };
+}
+async function ensureDatabaseExists() {
+    const { DB_HOST, DB_USER, DB_PASS, DB_NAME } = process.env;
+    const connection = await mysql.createConnection({
+        host: DB_HOST,
+        user: DB_USER,
+        password: DB_PASS
+    });
+    await connection.query(`CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`);
+    await connection.end();
+}
+function get_db_handle() {
+    const sequelize = new Sequelize(process.env.DB_NAME, process.env.DB_USER, process.env.DB_PASS, {
+        dialect: 'mysql',
+        dialectModule: require('mysql2'),
+        host: process.env.DB_HOST,
+        define: {
+            freezeTableName: true,
+            charset: 'utf8mb4'
+        },
+        logging: function (sql, time) {
+            if (time > 100) {
+                console.log(time + '->' + sql);
+            }
+        },
+        benchmark: true,
+        pool: {
+            max: 10,
+            min: 0,
+            acquire: 2000,
+            idle: 10000
+        },
+        retry: {
+            match: [
+                /ETIMEDOUT/,
+                /EHOSTUNREACH/,
+                /ECONNRESET/,
+                /ECONNREFUSED/,
+                /EPIPE/,
+                /SequelizeConnectionError/,
+                /SequelizeConnectionRefusedError/,
+                /SequelizeHostNotFoundError/,
+                /SequelizeHostNotReachableError/,
+                /SequelizeInvalidConnectionError/,
+                /SequelizeConnectionTimedOutError/
+            ],
+            max: 5 // 最大重试次数
+        }
+    });
+    return sequelize;
+}
+let g_sq;
+
+let db_opt = {
+    Op: Op,
+    model: {
+        rbac_user: {
+            id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+            name: { type: DataTypes.STRING },
+            online_token: { type: DataTypes.STRING },
+            online_time: { type: DataTypes.STRING },
+            phone: { type: DataTypes.STRING, unique: true },
+            password: { type: DataTypes.STRING },
+            fixed: { type: DataTypes.BOOLEAN },
+        },
+        rbac_role: {
+            id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+            name: { type: DataTypes.STRING },
+            description: { type: DataTypes.STRING },
+            is_readonly: { type: DataTypes.BOOLEAN, defaultValue: false },
+        },
+        rbac_module: {
+            id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+            name: { type: DataTypes.STRING, unique: true },
+            description: { type: DataTypes.STRING },
+        },
+        company: {
+            id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+            name: { type: DataTypes.STRING },
+        },
+    },
+    make_associate: function (_sq) {
+        _sq.models.rbac_user.belongsToMany(_sq.models.rbac_role, { through: 'rbac_user_role' });
+        _sq.models.rbac_role.belongsToMany(_sq.models.rbac_user, { through: 'rbac_user_role' });
+        _sq.models.rbac_role.belongsToMany(_sq.models.rbac_module, { through: 'rbac_role_module' });
+        _sq.models.rbac_module.belongsToMany(_sq.models.rbac_role, { through: 'rbac_role_module' });
+        _sq.models.rbac_user.belongsTo(_sq.models.company);
+        _sq.models.company.hasMany(_sq.models.rbac_user);
+        _sq.models.rbac_role.belongsTo(_sq.models.company);
+        _sq.models.company.hasMany(_sq.models.rbac_role);
+        _sq.models.rbac_module.belongsToMany(_sq.models.company, { through: 'company_module' });
+        _sq.models.company.belongsToMany(_sq.models.rbac_module, { through: 'company_module' });
+    },
+    install: async function () {
+        console.log('run install');
+        await ensureDatabaseExists();
+        let sq = this.get_sq();
+        Object.keys(this.model).forEach((key) => {
+            sq.define(key, this.model[key], { paranoid: true });
+        });
+        this.make_associate(sq);
+        await sq.sync({ alter: { drop: false } });
+        g_sq = sq;
+    },
+    get_sq: function () {
+        let ret = null;
+        if (!g_sq) {
+            g_sq = get_db_handle();
+        }
+        ret = g_sq;
+
+        return ret;
+    }
+};
+
+module.exports = db_opt;
