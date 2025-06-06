@@ -48,6 +48,7 @@ async function init_super_user() {
     }
     await module_install(role.id, app, require('./module/global_module'));
     await module_install(role.id, app, require('./module/resource_management'));
+    await module_install(role.id, app, require('./module/operator'));
 
     let all_modules = await sq.models.rbac_module.findAll();
     for (let index = 0; index < all_modules.length; index++) {

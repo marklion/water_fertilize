@@ -30,6 +30,16 @@ module.exports = {
                 data_type: { type: String, mean: '数据类型', example: 'int16' },
             }
         },
+        modbus_write_relays:{
+            type: Array,
+            mean: 'Modbus写入继电器列表',
+            explain: {
+                id: { type: Number, mean: '继电器ID', example: 1 },
+                action: { type: String, mean: '动作', example: '开' },
+                reg_address: { type: Number, mean: '寄存器地址', example: 200 },
+                value: { type: String, mean: '值', example: '1' },
+            }
+        },
     },
     device_info:{
         id: { type: Number, mean: '设备ID', example: 1 },
@@ -42,6 +52,17 @@ module.exports = {
             explain: {
                 id: { type: Number, mean: '驱动ID', example: 1 },
                 name: { type: String, mean: '驱动名称', example: '驱动A' },
+                type_id: { type: Number, mean: '驱动类型ID', example: 1 },
+                modbus_write_relays:{
+                    type: Array,
+                    mean: 'Modbus写入继电器列表',
+                    explain: {
+                        id: { type: Number, mean: '继电器ID', example: 1 },
+                        action: { type: String, mean: '动作', example: '开' },
+                        reg_address: { type: Number, mean: '寄存器地址', example: 200 },
+                        value: { type: String, mean: '值', example: '1' },
+                    }
+                },
             }
         },
         device_data:{
@@ -58,6 +79,23 @@ module.exports = {
                         title: { type: String, mean: '元数据标题', example: '温度' },
                         reg_address: { type: Number, mean: '寄存器地址', example: 100 },
                         data_type: { type: String, mean: '数据类型', example: 'int16' },
+                    }
+                },
+            }
+        },
+        device_actions:{
+            type: Array,
+            mean: '设备动作列表',
+            explain: {
+                id: { type: Number, mean: '动作ID', example: 1 },
+                modbus_write_relay:{
+                    type: Object,
+                    mean: 'Modbus写入继电器',
+                    explain: {
+                        id: { type: Number, mean: '继电器ID', example: 1 },
+                        action: { type: String, mean: '动作', example: '开' },
+                        reg_address: { type: Number, mean: '寄存器地址', example: 200 },
+                        value: { type: String, mean: '值', example: '1' },
                     }
                 },
             }

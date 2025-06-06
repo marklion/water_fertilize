@@ -43,6 +43,14 @@ export const constantRoutes = [
     component: () => import('@/views/404'),
     hidden: true
   },
+
+]
+
+/**
+ * asyncRoutes
+ * the routes that need to be dynamically loaded based on user roles
+ */
+export const asyncRoutes = [
   {
     path: '/',
     component: Layout,
@@ -51,17 +59,10 @@ export const constantRoutes = [
     children: [{
       path: 'dashboard',
       name: 'Dashboard',
-      component: () => import('@/views/dashboard'),
-      meta: { title: '主页', icon: 'dashboard', affix: true }
+      component: () => import('@/views/operator/device_opt'),
+      meta: { title: '主页', icon: 'dashboard', affix: true, roles: ['operator'] }
     }]
-  }
-]
-
-/**
- * asyncRoutes
- * the routes that need to be dynamically loaded based on user roles
- */
-export const asyncRoutes = [
+  },
   {
     path: '/resource_config',
     component: Layout,
@@ -74,7 +75,7 @@ export const asyncRoutes = [
     },
     children: [
       {
-        path:'driver_config',
+        path: 'driver_config',
         component: () => import('@/views/resource_config/driver_config'), // Parent router-view
         name: 'driverConfig',
         meta: { title: '驱动配置' }
@@ -88,7 +89,7 @@ export const asyncRoutes = [
     ]
   },
   {
-    path:'/global_config',
+    path: '/global_config',
     component: Layout,
     redirect: 'noRedirect',
     name: 'GlobalConfig',
@@ -99,13 +100,13 @@ export const asyncRoutes = [
     },
     children: [
       {
-        path:'/company_config',
+        path: 'company_config',
         component: () => import('@/views/global_config/company_config'), // Parent router-view
         name: 'CompanyConfig',
         meta: { title: '公司配置' }
       },
       {
-        path:'/user_config',
+        path: 'user_config',
         component: () => import('@/views/global_config/user_config'), // Parent router-view
         name: 'UserConfig',
         meta: { title: '用户配置' }

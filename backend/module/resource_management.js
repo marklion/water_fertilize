@@ -126,6 +126,65 @@ module.exports = {
                 return { result: true };
             },
         },
+        add_driver_relay:{
+            name:'添加驱动继电器',
+            description: '添加驱动继电器',
+            is_write: true,
+            is_get_api: false,
+            params:{
+                driver_id:{type: Number, have_to:true, mean:'驱动ID', example:1},
+                action:{type: String, have_to:true, mean:'动作', example:'开'},
+                reg_address:{type: Number, have_to:true, mean:'寄存器地址', example:200},
+                value:{type: String, have_to:true, mean:'值', example:'1'},
+            },
+            result:{
+                result: {type: Boolean, mean: '操作结果', example: true},
+            },
+            func:async function(body, token) {
+                let company = await rbac_lib.get_company_by_token(token);
+                let driver = await db_opt.get_sq().models.driver.findByPk(body.driver_id);
+                if (company && driver && await company.hasDriver(driver)) {
+                    await driver_lib.add_modbus_write_relay(driver, body.action, body.reg_address, body.value);
+                }
+                else
+                {
+                    throw {
+                        err_msg: '没有权限添加驱动继电器',
+                    }
+                }
+                return { result: true };
+            }
+        },
+        del_driver_relay:{
+            name:'删除驱动继电器',
+            description: '删除驱动继电器',
+            is_write: true,
+            is_get_api: false,
+            params:{
+                relay_id:{type: Number, have_to:true, mean:'继电器ID', example:1},
+            },
+            result:{
+                result: {type: Boolean, mean: '操作结果', example: true},
+            },
+            func:async function(body, token) {
+                let sq = db_opt.get_sq();
+                let relay = await sq.models.modbus_write_relay.findByPk(body.relay_id);
+                if (relay) {
+                    let driver = await relay.getDriver();
+                    let company = await rbac_lib.get_company_by_token(token);
+                    if (company && driver && await company.hasDriver(driver)) {
+                        await driver_lib.del_modbus_write_relay(relay.id);
+                    }
+                    else
+                    {
+                        throw {
+                            err_msg: '没有权限删除驱动继电器',
+                        }
+                    }
+                }
+                return { result: true };
+            }
+        },
         add_device:{
             name:'添加设备',
             description: '添加设备',

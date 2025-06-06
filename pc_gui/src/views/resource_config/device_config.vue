@@ -5,14 +5,8 @@
             <div style="height:80vh">
                 <el-table :data="slotProps.content" style="width: 100%">
                     <el-table-column prop="name" label="名称" />
-                    <el-table-column label="数值">
-                        <template slot-scope="scope">
-                            <el-table :data="scope.row.device_data" style="width: 100%">
-                                <el-table-column prop="modbus_read_metum.title" label="标题" />
-                                <el-table-column prop="value" label="数值" />
-                            </el-table>
-                        </template>
-                    </el-table-column>
+                    <el-table-column prop="driver.name" label="驱动" />
+                    <el-table-column prop="connection_key" label="连接key" />
                     <el-table-column>
                         <template slot="header">
                             <el-button size="mini" type="success" @click="add_device_diag = true">新增</el-button>

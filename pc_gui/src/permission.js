@@ -10,7 +10,7 @@ NProgress.configure({ showSpinner: false }) // NProgress Configuration
 
 const whiteList = ['/login'] // no redirect whitelist
 
-router.beforeEach(async(to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   // start progress bar
   NProgress.start()
 
@@ -29,7 +29,14 @@ router.beforeEach(async(to, from, next) => {
       // determine whether the user has obtained his permission roles through getInfo
       const hasRoles = store.getters.roles && store.getters.roles.length > 0
       if (hasRoles) {
-        next()
+        console.log(store.getters.roles.indexOf('global') != -1);
+        console.log(to.path);
+        if (store.getters.roles.indexOf('global') != -1 && (to.path == '/404' || to.path == '/')) {
+          next({ path: '/global_config/company_config' })
+        }
+        else {
+          next()
+        }
       } else {
         try {
           // get user info

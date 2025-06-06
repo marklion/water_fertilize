@@ -76,6 +76,7 @@ module.exports = {
                     order: [['id', 'DESC']],
                     limit: 20,
                     offset: body.pageNo * 20,
+                    distinct: true,
                 });
                 ret.total = resp.count;
                 ret.companies = resp.rows;
@@ -164,7 +165,8 @@ module.exports = {
                     offset: body.pageNo * 20,
                     include: [{
                         model: sq.models.company,
-                    }]
+                    }],
+                    distinct: true,
                 });
                 ret.total = resp.count;
                 ret.users = resp.rows;
@@ -236,10 +238,12 @@ module.exports = {
                     let roles = await user.getRbac_roles();
                     for (let index = 0; index < roles.length; index++) {
                         const element = roles[index];
+                        let is_admin = element.name == 'admin';
                         let modules = await element.getRbac_modules();
                         for (let index = 0; index < modules.length; index++) {
                             const element = modules[index].toJSON();
                             if (user.modules.findIndex((value) => value.id === element.id) === -1) {
+                                if (element.name == 'global' || !is_admin)
                                 user.modules.push(element);
                             }
                         }

@@ -109,6 +109,15 @@ let db_opt = {
             id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
             value:{ type: DataTypes.DECIMAL(22, 4), defaultValue:0, get:getDecimalValue('value')},
         },
+        modbus_write_relay:{
+            id:{ type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+            action:{ type: DataTypes.STRING},
+            reg_address:{ type: DataTypes.INTEGER},
+            value:{ type: DataTypes.TEXT},
+        },
+        device_action:{
+            id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+        },
     },
     make_associate: function (_sq) {
         _sq.models.rbac_user.belongsToMany(_sq.models.rbac_role, { through: 'rbac_user_role' });
@@ -132,6 +141,12 @@ let db_opt = {
         _sq.models.device.hasMany(_sq.models.device_data);
         _sq.models.device_data.belongsTo(_sq.models.modbus_read_meta)
         _sq.models.modbus_read_meta.hasMany(_sq.models.device_data);
+        _sq.models.modbus_write_relay.belongsTo(_sq.models.driver);
+        _sq.models.driver.hasMany(_sq.models.modbus_write_relay);
+        _sq.models.device_action.belongsTo(_sq.models.device);
+        _sq.models.device.hasMany(_sq.models.device_action);
+        _sq.models.device_action.belongsTo(_sq.models.modbus_write_relay);
+        _sq.models.modbus_write_relay.hasMany(_sq.models.device_action);
     },
     install: async function () {
         console.log('run install');

@@ -24,7 +24,7 @@ export default {
     },
     data() {
         return {
-            title: 'NPY-admin',
+            title: 'NPK-admin',
             logo: '/assets/zyzl.jpg'
         }
     }

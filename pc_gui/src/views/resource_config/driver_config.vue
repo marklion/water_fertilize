@@ -12,19 +12,36 @@
                     </el-table-column>
                     <el-table-column label="数据" width="840px">
                         <template slot-scope="scope">
-                            <el-table :data="scope.row.modbus_read_meta" style="width: 100%">
-                                <el-table-column prop="title" label="标题" />
-                                <el-table-column prop="reg_address" label="寄存器地址" />
-                                <el-table-column prop="data_type" label="数据类型" />
-                                <el-table-column>
-                                    <template slot="header">
-                                        <el-button size="mini" type="success" @click="prepare_add_meta(scope.row)">新增</el-button>
-                                    </template>
-                                    <template slot-scope="sub_scope">
-                                        <el-button size="mini" type="danger" @click="delete_meta(sub_scope.row)">删除</el-button>
-                                    </template>
-                                </el-table-column>
-                            </el-table>
+                            <div v-if="scope.row.type_id == 1">
+                                <el-table :data="scope.row.modbus_read_meta" style="width: 100%">
+                                    <el-table-column prop="title" label="标题" />
+                                    <el-table-column prop="reg_address" label="寄存器地址" />
+                                    <el-table-column prop="data_type" label="数据类型" />
+                                    <el-table-column>
+                                        <template slot="header">
+                                            <el-button size="mini" type="success" @click="prepare_add_meta(scope.row)">新增</el-button>
+                                        </template>
+                                        <template slot-scope="sub_scope">
+                                            <el-button size="mini" type="danger" @click="delete_meta(sub_scope.row)">删除</el-button>
+                                        </template>
+                                    </el-table-column>
+                                </el-table>
+                            </div>
+                            <div v-if="scope.row.type_id == 2">
+                                <el-table :data="scope.row.modbus_write_relays" style="width: 100%">
+                                    <el-table-column prop="action" label="动作" />
+                                    <el-table-column prop="reg_address" label="寄存器地址" />
+                                    <el-table-column prop="value" label="指令值" />
+                                    <el-table-column>
+                                        <template slot="header">
+                                            <el-button size="mini" type="success" @click="prepare_add_relay(scope.row)">新增</el-button>
+                                        </template>
+                                        <template slot-scope="sub_scope">
+                                            <el-button size="mini" type="danger" @click="delete_relay(sub_scope.row)">删除</el-button>
+                                        </template>
+                                    </el-table-column>
+                                </el-table>
+                            </div>
                         </template>
                     </el-table-column>
                     <el-table-column>
@@ -74,6 +91,23 @@
             <el-button type="primary" @click="add_meta">确定</el-button>
         </span>
     </el-dialog>
+    <el-dialog title="新增继电器" :visible.sync="add_relay_diag" width="50%">
+        <el-form :model="relay_form" ref="relay_form" :rules="add_relay_rules">
+            <el-form-item label="动作" prop="action">
+                <el-input v-model="relay_form.action"></el-input>
+            </el-form-item>
+            <el-form-item label="地址" prop="reg_address">
+                <el-input v-model="relay_form.reg_address"></el-input>
+            </el-form-item>
+            <el-form-item label="指令值" prop="value">
+                <el-input v-model="relay_form.value"></el-input>
+            </el-form-item>
+        </el-form>
+        <span slot="footer">
+            <el-button @click="add_relay_diag = false">取消</el-button>
+            <el-button type="primary" @click="add_relay">确定</el-button>
+        </span>
+    </el-dialog>
 </div>
 </template>
 
@@ -87,13 +121,17 @@ export default {
     data() {
         return {
             driver_type: {
-                modbus_rtu: {
+                modbus_meter: {
                     type_id: 1,
-                    name: 'Modbus RTU',
+                    name: 'Modbus 仪表',
+                },
+                modbus_relay: {
+                    type_id: 2,
+                    name: 'Modbus 继电器',
                 },
             },
-            data_type:[
-                {data_type:'uint32', name: '无符号32位整数'},
+            data_type: [
+                { data_type: 'uint32', name: '无符号32位整数' },
             ],
             add_driver_diag: false,
             add_driver_rules: {
@@ -129,9 +167,69 @@ export default {
                 reg_address: '',
                 data_type: '',
             },
+            add_relay_diag: false,
+            add_relay_rules: {
+                action: [
+                    { required: true, message: '请输入动作', trigger: 'blur' },
+            ],
+                reg_address: [
+                    { required: true, message: '请输入寄存器地址', trigger: 'blur' },
+                    { pattern: /^\d+$/, message: '寄存器地址必须为数字', trigger: 'blur' }
+                ],
+                value: [
+                    { required: true, message: '请输入指令值', trigger: 'blur' },
+                ]
+            },
+            relay_form: {
+                action: '',
+                reg_address: '',
+                value: '',
+            },
         };
     },
     methods: {
+        prepare_add_relay:function(driver) {
+            this.relay_form = {
+                action: '',
+                reg_address: '',
+                value: '',
+            };
+            this.add_relay_diag = true;
+            this.focus_driver = driver;
+        },
+        add_relay: async function () {
+            try {
+                let valid = await this.$refs.relay_form.validate();
+                if (!valid) {
+                    return;
+                }
+                await this.$send_req('/resource_management/add_driver_relay', {
+                    driver_id: this.focus_driver.id,
+                    action: this.relay_form.action,
+                    reg_address: parseInt(this.relay_form.reg_address),
+                    value: this.relay_form.value,
+                });
+                this.add_relay_diag = false;
+                this.refresh();
+            } catch (error) {
+                console.log(error);
+            }
+        },
+        delete_relay: async function (relay) {
+            try {
+                await this.$confirm(`确定删除继电器 ${relay.action} 吗？`, '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                });
+                await this.$send_req('/resource_management/del_driver_relay', {
+                    relay_id: relay.id
+                });
+                this.refresh();
+            } catch (error) {
+                console.log(error);
+            }
+        },
         prepare_add_meta: function (driver) {
             this.meta_form = {
                 title: '',
