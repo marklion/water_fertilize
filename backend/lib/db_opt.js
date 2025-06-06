@@ -70,7 +70,7 @@ let db_opt = {
             name: { type: DataTypes.STRING },
             online_token: { type: DataTypes.STRING },
             online_time: { type: DataTypes.STRING },
-            phone: { type: DataTypes.STRING, unique: true },
+            phone: { type: DataTypes.STRING},
             password: { type: DataTypes.STRING },
             fixed: { type: DataTypes.BOOLEAN },
         },
@@ -89,6 +89,26 @@ let db_opt = {
             id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
             name: { type: DataTypes.STRING },
         },
+        driver:{
+            id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+            name:{ type: DataTypes.STRING},
+            type_id:{type: DataTypes.INTEGER, defaultValue: 1},
+        },
+        modbus_read_meta:{
+            id:{ type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+            title:{ type: DataTypes.STRING},
+            reg_address:{ type: DataTypes.INTEGER},
+            data_type:{ type: DataTypes.STRING},
+        },
+        device:{
+            id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+            name: { type: DataTypes.STRING },
+            connection_key: { type: DataTypes.TEXT },
+        },
+        device_data:{
+            id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+            value:{ type: DataTypes.DECIMAL(22, 4), defaultValue:0, get:getDecimalValue('value')},
+        },
     },
     make_associate: function (_sq) {
         _sq.models.rbac_user.belongsToMany(_sq.models.rbac_role, { through: 'rbac_user_role' });
@@ -101,6 +121,17 @@ let db_opt = {
         _sq.models.company.hasMany(_sq.models.rbac_role);
         _sq.models.rbac_module.belongsToMany(_sq.models.company, { through: 'company_module' });
         _sq.models.company.belongsToMany(_sq.models.rbac_module, { through: 'company_module' });
+
+        _sq.models.driver.belongsTo(_sq.models.company);
+        _sq.models.company.hasMany(_sq.models.driver);
+        _sq.models.modbus_read_meta.belongsTo(_sq.models.driver);
+        _sq.models.driver.hasMany(_sq.models.modbus_read_meta);
+        _sq.models.device.belongsTo(_sq.models.driver);
+        _sq.models.driver.hasMany(_sq.models.device);
+        _sq.models.device_data.belongsTo(_sq.models.device);
+        _sq.models.device.hasMany(_sq.models.device_data);
+        _sq.models.device_data.belongsTo(_sq.models.modbus_read_meta)
+        _sq.models.modbus_read_meta.hasMany(_sq.models.device_data);
     },
     install: async function () {
         console.log('run install');

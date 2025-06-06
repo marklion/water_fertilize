@@ -103,7 +103,7 @@ module.exports = {
         let modules = await sq.models.rbac_module.findAll();
         for (let index = 0; index < modules.length; index++) {
             const element = modules[index];
-            if (!await company.hasRbac_module(element)) {
+            if (!await company.hasRbac_module(element) && element.name != 'global') {
                 await company.addRbac_module(element);
             }
         }
@@ -225,7 +225,10 @@ module.exports = {
         if (role) {
             let modules = await sq.models.rbac_module.findAll();
             for (let index = 0; index < modules.length; index++) {
-                await this.connect_role2module(role.id, modules[index].id);
+                let element = modules[index];
+                if (element.name != 'global') {
+                    await this.connect_role2module(role.id, element.id);
+                }
             }
         }
 
@@ -277,7 +280,7 @@ module.exports = {
         };
         let ret = [];
         let count = 0;
-        let user = await  this.get_user_by_token(token);
+        let user = await this.get_user_by_token(token);
         let _company = await this.get_company_by_token(token);
         if (_company && user && user.phone != '18911992582') {
             ret = await _company.getRbac_modules(condition);
@@ -356,7 +359,7 @@ module.exports = {
         }
         await user.save();
     },
-    clear_user_bind_info:async function(user) {
+    clear_user_bind_info: async function (user) {
         let urs = await user.getRbac_roles();
         for (let index = 0; index < urs.length; index++) {
             const element = urs[index];

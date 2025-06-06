@@ -106,16 +106,72 @@ module.exports = {
                     where: { phone: body.phone }
                 });
                 if (exist_user.length != 1) {
-                    await company.createRbac_user({
+                    let new_user = await company.createRbac_user({
                         phone: body.phone,
                         name: body.name,
                         password: '123456',
                     });
+                    let role = await rbac_lib.make_company_admin_role(company)
+                    await rbac_lib.connect_user2role(new_user.id, role.id);
                 }
                 return ret;
             }
         },
-        make_user_admin:{
+        delete_user: {
+            name: '删除用户',
+            description: '删除用户',
+            need_rbac: true,
+            is_write: true,
+            is_get_api: false,
+            params: {
+                user_id: { type: Number, have_to: true, mean: '用户ID', example: 1 },
+            },
+            result: {
+                result: { type: Boolean, mean: '删除结果', example: true },
+            },
+            func: async function (body, token) {
+                let sq = db_opt.get_sq();
+                let ret = { result: true };
+                let user = await sq.models.rbac_user.findByPk(body.user_id);
+                if (user) {
+                    await user.destroy();
+                }
+                else {
+                    ret.result = false;
+                }
+                return ret;
+            }
+        },
+        get_users: {
+            name: '获取用户列表',
+            description: '获取用户列表',
+            need_rbac: true,
+            is_write: false,
+            is_get_api: true,
+            params: {
+            },
+            result: {
+                users: {
+                    type: Array, mean: '用户列表', explain: api_param_result_define.user_info
+                }
+            },
+            func: async function (body, token) {
+                let sq = db_opt.get_sq();
+                let ret = { users: [], total: 0 };
+                let resp = await sq.models.rbac_user.findAndCountAll({
+                    order: [['companyId', 'DESC'], ['id', 'DESC']],
+                    limit: 20,
+                    offset: body.pageNo * 20,
+                    include: [{
+                        model: sq.models.company,
+                    }]
+                });
+                ret.total = resp.count;
+                ret.users = resp.rows;
+                return ret;
+            }
+        },
+        make_user_admin: {
             name: '设置用户为管理员',
             description: '设置用户为管理员',
             need_rbac: true,

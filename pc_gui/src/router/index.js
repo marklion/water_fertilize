@@ -74,6 +74,12 @@ export const asyncRoutes = [
     },
     children: [
       {
+        path:'driver_config',
+        component: () => import('@/views/resource_config/driver_config'), // Parent router-view
+        name: 'driverConfig',
+        meta: { title: '驱动配置' }
+      },
+      {
         path: 'device_config',
         component: () => import('@/views/resource_config/device_config'), // Parent router-view
         name: 'deviceConfig',
@@ -97,6 +103,12 @@ export const asyncRoutes = [
         component: () => import('@/views/global_config/company_config'), // Parent router-view
         name: 'CompanyConfig',
         meta: { title: '公司配置' }
+      },
+      {
+        path:'/user_config',
+        component: () => import('@/views/global_config/user_config'), // Parent router-view
+        name: 'UserConfig',
+        meta: { title: '用户配置' }
       }
     ],
   },
