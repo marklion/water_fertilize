@@ -118,6 +118,36 @@ let db_opt = {
         device_action:{
             id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
         },
+        policy_template:{
+            id:{type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true},
+            name:{type: DataTypes.STRING},
+        },
+        policy_data_source:{
+            id:{type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true},
+            name:{type: DataTypes.STRING},
+        },
+        policy_action_node:{
+            id:{type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true},
+            name:{type: DataTypes.STRING},
+        },
+        policy_state_node:{
+            id:{type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true},
+            name:{type: DataTypes.STRING},
+        },
+        policy_state_action:{
+            id:{type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true},
+            priority:{type: DataTypes.INTEGER, defaultValue: 0},
+        },
+        policy_state_transition:{
+            id:{type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true},
+            name:{type: DataTypes.STRING},
+            compare_condition:{type: DataTypes.STRING},
+            priority:{type: DataTypes.INTEGER, defaultValue: 0},
+        },
+        policy_instance:{
+            id:{type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true},
+            name:{type: DataTypes.STRING},
+        },
     },
     make_associate: function (_sq) {
         _sq.models.rbac_user.belongsToMany(_sq.models.rbac_role, { through: 'rbac_user_role' });
@@ -147,6 +177,39 @@ let db_opt = {
         _sq.models.device.hasMany(_sq.models.device_action);
         _sq.models.device_action.belongsTo(_sq.models.modbus_write_relay);
         _sq.models.modbus_write_relay.hasMany(_sq.models.device_action);
+
+        _sq.models.policy_template.belongsTo(_sq.models.company);
+        _sq.models.company.hasMany(_sq.models.policy_template);
+        _sq.models.policy_data_source.belongsTo(_sq.models.policy_template);
+        _sq.models.policy_template.hasMany(_sq.models.policy_data_source);
+        _sq.models.policy_data_source.belongsTo(_sq.models.modbus_read_meta);
+        _sq.models.modbus_read_meta.hasMany(_sq.models.policy_data_source);
+        _sq.models.policy_action_node.belongsTo(_sq.models.policy_template);
+        _sq.models.policy_template.hasMany(_sq.models.policy_action_node);
+        _sq.models.policy_action_node.belongsTo(_sq.models.modbus_write_relay);
+        _sq.models.modbus_write_relay.hasMany(_sq.models.policy_action_node);
+
+        _sq.models.policy_state_node.belongsTo(_sq.models.policy_template);
+        _sq.models.policy_template.hasMany(_sq.models.policy_state_node);
+        _sq.models.policy_state_action.belongsTo(_sq.models.policy_state_node, {as:'enter_state', foreignKey: 'enterStateId'});
+        _sq.models.policy_state_action.belongsTo(_sq.models.policy_state_node, {as:'do_state', foreignKey: 'doStateId'});
+        _sq.models.policy_state_action.belongsTo(_sq.models.policy_state_node, {as:'exit_state', foreignKey: 'exitStateId'});
+        _sq.models.policy_state_node.hasMany(_sq.models.policy_state_action, {as:'enter_actions', foreignKey: 'enterStateId'});
+        _sq.models.policy_state_node.hasMany(_sq.models.policy_state_action, {as:'do_actions', foreignKey: 'doStateId'});
+        _sq.models.policy_state_node.hasMany(_sq.models.policy_state_action, {as:'exit_actions', foreignKey: 'exitStateId'});
+        _sq.models.policy_state_action.belongsTo(_sq.models.policy_action_node);
+        _sq.models.policy_action_node.hasMany(_sq.models.policy_state_action);
+        _sq.models.policy_state_transition.belongsTo(_sq.models.policy_state_node, {as: 'from_state', foreignKey: 'fromStateId'});
+        _sq.models.policy_state_node.hasMany(_sq.models.policy_state_transition, {as: 'from_transitions', foreignKey: 'fromStateId'});
+        _sq.models.policy_state_transition.belongsTo(_sq.models.policy_data_source);
+        _sq.models.policy_data_source.hasMany(_sq.models.policy_state_transition);
+        _sq.models.policy_state_transition.belongsTo(_sq.models.policy_state_node, {as: 'to_state', foreignKey: 'toStateId'});
+        _sq.models.policy_state_node.hasMany(_sq.models.policy_state_transition, {as: 'to_transitions', foreignKey: 'toStateId'});
+
+        _sq.models.policy_instance.belongsTo(_sq.models.policy_template);
+        _sq.models.policy_template.hasMany(_sq.models.policy_instance);
+        _sq.models.policy_instance.belongsTo(_sq.models.policy_state_node);
+        _sq.models.policy_state_node.hasMany(_sq.models.policy_instance);
     },
     install: async function () {
         console.log('run install');

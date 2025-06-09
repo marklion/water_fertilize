@@ -89,6 +89,25 @@ export const asyncRoutes = [
     ]
   },
   {
+    path: '/policy',
+    component: Layout,
+    redirect: 'noRedirect',
+    name: 'Policy',
+    meta: {
+      title: '策略管理',
+      icon: 'nested',
+      roles: ['policy']
+    },
+    children: [
+      {
+        path: 'policy_template',
+        component: () => import('@/views/policy_config/policy_template'), // Parent router-view
+        name: 'policyTemplate',
+        meta: { title: '策略模板配置' }
+      },
+    ]
+  },
+  {
     path: '/global_config',
     component: Layout,
     redirect: 'noRedirect',
