@@ -267,10 +267,10 @@ module.exports = {
             },
             func: async function (body, token) {
                 let company = await rbac_lib.get_company_by_token(token);
-                let sa = await db_opt.get_sq().models.policy_state_action.findByPk(body.sa_id, {
-                    include: [{ model: db_opt.get_sq().models.policy_state_node, include: [{ model: db_opt.get_sq().models.policy_template }] }]
+                let sa = await db_opt.get_sq().models.policy_state_action.findByPk(body.action_id, {
+                    include: [{ model: db_opt.get_sq().models.policy_action_node, include: [{ model: db_opt.get_sq().models.policy_template }] }]
                 });
-                if (sa && company && await company.hasPolicy_template(sa.policy_state_node.policy_template)) {
+                if (sa && company && await company.hasPolicy_template(sa.policy_action_node.policy_template)) {
                     await policy_lib.del_action(body.action_id);
                 }
                 else {
@@ -289,7 +289,6 @@ module.exports = {
                 to_node_id: { type: Number, have_to: true, mean: '目标状态节点ID', example: 2 },
                 compare_condition: { type: String, have_to: true, mean: '转换条件', example: '温度 > 30' },
                 priority: { type: Number, have_to: true, mean: '优先级', example: 1 },
-                ds_id: { type: Number, have_to: true, mean: '数据源ID', example: 1 },
             },
             result: {
                 result: { type: Boolean, mean: '操作结果', example: true }
@@ -300,9 +299,8 @@ module.exports = {
                     include: [{ model: db_opt.get_sq().models.policy_template }]
                 });
                 let to_node = await db_opt.get_sq().models.policy_state_node.findByPk(body.to_node_id);
-                let ds = await db_opt.get_sq().models.policy_data_source.findByPk(body.ds_id);
-                if (from_node && to_node && ds && company && await company.hasPolicy_template(from_node.policy_template)) {
-                    await policy_lib.add_transition(from_node, to_node, ds, body.compare_condition, body.priority);
+                if (from_node && to_node && company && await company.hasPolicy_template(from_node.policy_template)) {
+                    await policy_lib.add_transition(from_node, to_node, body.compare_condition, body.priority);
                 }
                 else {
                     throw { err_msg: '没有权限添加状态转换' };

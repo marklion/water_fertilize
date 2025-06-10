@@ -31,12 +31,20 @@
                         </template>
                         <template slot-scope="scope">
                             <el-button size="mini" type="danger" @click="del_pt(scope)">删除</el-button>
+                            <el-button size="mini" type="primary" @click="open_state_page(scope.row)">展开状态</el-button>
                         </template>
                     </el-table-column>
                 </el-table>
             </div>
         </template>
     </page-content>
+    <el-drawer destroy-on-close  :visible.sync="policy_state_draw" direction="rtl" size="70%">
+        <template slot="title">
+            <span>状态详情</span>
+            <el-button type="primary" size="small" @click="add_state">新增状态</el-button>
+        </template>
+        <policy-state :action_nodes="focus_policy.policy_action_nodes" :policy_state_nodes="focus_policy.policy_state_nodes" @refresh="refresh"></policy-state>
+    </el-drawer>
     <el-dialog title="新增数据源" :visible.sync="add_ds_diag" width="50%">
         <el-form :model="ds_form" ref="ds_form" :rules="ds_form_rules">
             <el-form-item label="名称" prop="name">
@@ -71,11 +79,13 @@
 <script>
 import PageContent from '../../components/PageContent.vue';
 import SelectSearch from '../../components/SelectSearch.vue';
+import PolicyState from './policy_state.vue';
 export default {
     name: 'PolicyTemplate',
     components: {
         "page-content": PageContent,
         "select-search": SelectSearch,
+        "policy-state": PolicyState,
     },
     data: function () {
         return {
@@ -107,9 +117,30 @@ export default {
                 ],
             },
             add_an_diag: false,
+            policy_state_draw: false,
+            focus_policy: {}
         };
     },
     methods: {
+        add_state:async function() {
+            let name = await this.$prompt('请输入状态名称', '新增状态', {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+            });
+            if (name.value === '') {
+                this.$message.error('状态名称不能为空');
+                return;
+            }
+            await this.$send_req('/policy/add_state_node', {
+                pt_id: this.focus_policy.id,
+                name: name.value,
+            });
+            this.refresh();
+        },
+        open_state_page: function (focus_policy) {
+            this.focus_policy = focus_policy;
+            this.policy_state_draw = true;
+        },
         prepare_add_action_node: function (pt_id) {
             this.an_form.pt_id = pt_id;
             this.an_form.modbus_write_relay_id = null;
@@ -174,6 +205,8 @@ export default {
         },
         refresh: function () {
             this.$refs.all_pts.refresh();
+            this.focus_policy = {};
+            this.policy_state_draw = false;
         },
         add_pt: async function () {
             let name = await this.$prompt('请输入策略模板名称', '新增策略模板', {

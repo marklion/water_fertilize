@@ -14,7 +14,7 @@
             <span class="svg-container">
                 <svg-icon icon-class="password" />
             </span>
-            <el-input :key="passwordType" ref="password" v-model="loginForm.password" :type="passwordType" placeholder="密码" name="password" tabindex="-1" auto-complete="on" @keyup.enter.native="handleLogin" />
+            <el-input :key="passwordType" ref="password" v-model="loginForm.password" :type="passwordType" placeholder="密码" name="password" tabindex="0" auto-complete="on" @keyup.enter.native="handleLogin" />
             <span class="show-pwd" @click="showPwd">
                 <svg-icon :icon-class="passwordType === 'password' ? 'eye' : 'eye-open'" />
             </span>

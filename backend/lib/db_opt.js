@@ -201,8 +201,6 @@ let db_opt = {
         _sq.models.policy_action_node.hasMany(_sq.models.policy_state_action);
         _sq.models.policy_state_transition.belongsTo(_sq.models.policy_state_node, {as: 'from_state', foreignKey: 'fromStateId'});
         _sq.models.policy_state_node.hasMany(_sq.models.policy_state_transition, {as: 'from_transitions', foreignKey: 'fromStateId'});
-        _sq.models.policy_state_transition.belongsTo(_sq.models.policy_data_source);
-        _sq.models.policy_data_source.hasMany(_sq.models.policy_state_transition);
         _sq.models.policy_state_transition.belongsTo(_sq.models.policy_state_node, {as: 'to_state', foreignKey: 'toStateId'});
         _sq.models.policy_state_node.hasMany(_sq.models.policy_state_transition, {as: 'to_transitions', foreignKey: 'toStateId'});
 

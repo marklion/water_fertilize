@@ -1,0 +1,276 @@
+<template>
+<div class="policy_state_show">
+    <div class="single_state_show" v-for="single_state in policy_state_nodes" :key="single_state.id">
+        <el-descriptions :title="single_state.name" direction="vertical" :column="3" border>
+            <el-descriptions-item label="进入动作">
+                <span v-for="single_action in single_state.enter_actions" :key="single_action.id">
+                    <el-tag closable @close="del_action(single_action)" size="mini" type="primary">{{state_action_show(single_action)}}</el-tag>
+                </span>
+            </el-descriptions-item>
+            <el-descriptions-item label="持续动作">
+                <span v-for="single_action in single_state.do_actions" :key="single_action.id">
+                    <el-tag closable @close="del_action(single_action)" size="mini" type="success">{{state_action_show(single_action)}}</el-tag>
+                </span>
+            </el-descriptions-item>
+            <el-descriptions-item label="离开动作">
+                <span v-for="single_action in single_state.exit_actions" :key="single_action.id">
+                    <el-tag closable @close="del_action(single_action)" size="mini" type="danger">{{state_action_show(single_action)}}</el-tag>
+                </span>
+            </el-descriptions-item>
+            <template slot="extra">
+                <el-button type="primary" size="mini" @click="prepare_add_action(single_state.id)">添加动作</el-button>
+                <el-button type="danger" size="mini" @click="del_state(single_state)">删除状态</el-button>
+            </template>
+        </el-descriptions>
+        <el-divider>状态转移</el-divider>
+        <el-table :data="single_state.from_transitions" style="width: 100%">
+            <el-table-column prop="priority" label="优先级" />
+            <el-table-column prop="compare_condition" label="判断依据" />
+            <el-table-column label="目标状态">
+                <template slot-scope="scope">
+                    <span>{{scope.row.to_state.name}}</span>
+                </template>
+            </el-table-column>
+            <el-table-column>
+                <template slot="header">
+                    <el-button size="mini" type="success" @click="prepare_add_transition(single_state.id)">新增</el-button>
+                </template>
+                <template slot-scope="scope">
+                    <el-button size="mini" type="danger" @click="del_transition(scope.row)">删除</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+    </div>
+    <el-dialog append-to-body title="新增动作" :visible.sync="add_action_diag" width="50%">
+        <el-form :model="action_form" ref="action_form" :rules="action_form_rules">
+            <el-form-item label="优先级" prop="priority">
+                <el-input v-model="action_form.priority"></el-input>
+            </el-form-item>
+            <el-form-item label="动作" prop="an_id">
+                <el-select v-model="action_form.an_id" placeholder="请选择动作">
+                    <el-option v-for="item in action_nodes" :key="item.id" :label="item.name" :value="item.id"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="动作类型" prop="action_type">
+                <el-select v-model="action_form.action_type" placeholder="请选择动作类型">
+                    <el-option v-for="item in action_type_options" :key="item.value" :label="item.label" :value="item.value"></el-option>
+                </el-select>
+            </el-form-item>
+        </el-form>
+        <span slot="footer">
+            <el-button @click="add_action_diag = false">取消</el-button>
+            <el-button type="primary" @click="add_action">确定</el-button>
+        </span>
+    </el-dialog>
+    <el-dialog append-to-body title="新增转移条件" :visible.sync="add_transition_diag" width="50%">
+        <el-form :model="transition_form" ref="transition_form" :rules="transition_form_rules">
+            <el-form-item label="优先级" prop="priority">
+                <el-input v-model="transition_form.priority"></el-input>
+            </el-form-item>
+            <el-form-item label="目标状态" prop="to_node_id">
+                <el-select v-model="transition_form.to_node_id" placeholder="请选择状态">
+                    <el-option v-for="item in policy_state_nodes" :key="item.id" :label="item.name" :value="item.id"></el-option>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="判断依据" prop="compare_condition">
+                <el-input v-model="transition_form.compare_condition"></el-input>
+            </el-form-item>
+        </el-form>
+        <span slot="footer">
+            <el-button @click="add_transition_diag= false">取消</el-button>
+            <el-button type="primary" @click="add_transition">确定</el-button>
+        </span>
+    </el-dialog>
+</div>
+</template>
+
+<script>
+export default {
+    name: 'PolicyState',
+    props: {
+        policy_state_nodes: {
+            type: Array,
+            default: () => [],
+        },
+        action_nodes: {
+            type: Array,
+            default: () => [],
+        },
+        data_sources: {
+            type: Array,
+            default: () => [],
+        },
+    },
+    data: function () {
+        return {
+            add_action_diag: false,
+            action_form: {
+                sn_id: 0,
+                an_id: 0,
+                priority: 0,
+                action_type: null, // enter, do, exit
+            },
+            action_form_rules: {
+                sn_id: [
+                    { required: true, message: '请选择状态', trigger: 'change' },
+                ],
+                an_id: [
+                    { required: true, message: '请选择动作', trigger: 'change' },
+                ],
+                priority: [
+                    { required: true, message: '请输入优先级', trigger: 'blur' },
+                    { pattern: /^\d+$/, message: '优先级必须为数字', trigger: 'blur' },
+                ],
+                action_type: [
+                    { required: true, message: '请选择动作类型', trigger: 'change' },
+                ],
+            },
+            action_type_options: [
+                { label: '进入动作', value: 'enter' },
+                { label: '持续动作', value: 'do' },
+                { label: '离开动作', value: 'exit' },
+            ],
+            add_transition_diag: false,
+            transition_form: {
+                from_node_id: 0,
+                to_node_id: 0,
+                priority: 0,
+                compare_condition: '',
+            },
+            transition_form_rules: {
+                from_node_id: [
+                    { required: true, message: '请选择起始状态', trigger: 'change' },
+                ],
+                to_node_id: [
+                    { required: true, message: '请选择目标状态', trigger: 'change' },
+                ],
+                priority: [
+                    { required: true, message: '请输入优先级', trigger: 'blur' },
+                    { pattern: /^\d+$/, message: '优先级必须为数字', trigger: 'blur' },
+                ],
+                compare_condition: [
+                    { required: true, message: '请输入判断依据', trigger: 'blur' },
+                ],
+            },
+        };
+    },
+    methods: {
+        prepare_add_transition: function (from_node_id) {
+            this.transition_form.from_node_id = from_node_id;
+            this.transition_form.to_node_id = null;
+            this.transition_form.priority = 0;
+            this.transition_form.compare_condition = '';
+            this.add_transition_diag = true;
+        },
+        add_transition: async function () {
+            let valid = await this.$refs.transition_form.validate();
+            if (!valid) {
+                return;
+            }
+            await this.$send_req('/policy/add_transition', {
+                from_node_id: parseInt(this.transition_form.from_node_id),
+                to_node_id: parseInt(this.transition_form.to_node_id),
+                priority: parseInt(this.transition_form.priority),
+                compare_condition: this.transition_form.compare_condition,
+            });
+            this.prepare_add_transition(0);
+            this.add_transition_diag = false;
+            this.refresh();
+        },
+        del_transition: async function (transition) {
+            await this.$confirm('确定删除转移条件吗？', '提示', {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+                type: 'warning',
+            });
+            await this.$send_req('/policy/del_transition', {
+                transition_id: transition.id,
+            })
+            this.refresh();
+        },
+        del_action: async function (action) {
+            await this.$confirm('确定删除动作 ' + action.policy_action_node.name + ' 吗？', '提示', {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+                type: 'warning',
+            });
+            await this.$send_req('/policy/del_state_action', {
+                action_id: action.id,
+            })
+            this.refresh();
+        },
+        del_state: async function (state) {
+            await this.$confirm('确定删除状态 ' + state.name + ' 吗？', '提示', {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+                type: 'warning',
+            });
+            await this.$send_req('/policy/del_state_node', {
+                sn_id: state.id,
+            })
+            this.refresh();
+        },
+        state_action_show: function (sa) {
+            return sa.priority + ':' + sa.policy_action_node.name;
+        },
+        prepare_add_action: function (sn_id) {
+            this.action_form.sn_id = sn_id;
+            this.action_form.an_id = null;
+            this.action_form.priority = 0;
+            this.action_form.action_type = null;
+            this.add_action_diag = true;
+        },
+        add_action: async function () {
+            let valid = await this.$refs.action_form.validate();
+            if (!valid) {
+                return;
+            }
+            await this.$send_req('/policy/add_state_action', {
+                sn_id: parseInt(this.action_form.sn_id),
+                an_id: parseInt(this.action_form.an_id),
+                priority: parseInt(this.action_form.priority),
+                action_type: this.action_form.action_type,
+            });
+            this.prepare_add_action(0);
+            this.add_action_diag = false;
+            this.refresh();
+        },
+        refresh: function () {
+            this.$emit('refresh');
+        },
+    },
+}
+</script>
+
+<style scoped>
+.policy_state_show {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px; /* 元素间空隙 */
+}
+
+.single_state_show {
+    padding: 20px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12), 0 1.5px 4px rgba(0,0,0,0.08);
+    margin-bottom: 0; /* 用gap控制间距 */
+    min-width: 380px;
+    flex: 1 1 380px;
+    transition: box-shadow 0.2s;
+    margin-top: 10px;
+}
+
+.single_state_show:hover {
+    box-shadow: 0 8px 24px rgba(0,0,0,0.18), 0 3px 8px rgba(0,0,0,0.10);
+}
+
+.el-descriptions {
+    background: transparent;
+    border-radius: 8px;
+}
+
+.el-divider {
+    margin: 18px 0;
+}
+</style>

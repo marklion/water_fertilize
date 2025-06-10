@@ -26,40 +26,67 @@ module.exports = {
             limit: pageSize,
             offset: offset,
             order: [['id', 'DESC']],
-            include:[
-                {model:sq.models.policy_data_source, include:[
-                    {model:sq.models.modbus_read_meta, include:[
-                        {model:sq.models.driver}
-                    ]},
-                ]},
-                {model:sq.models.policy_action_node, include :[
-                    {model:sq.models.modbus_write_relay, include:[
-                        {model:sq.models.driver}
-                    ]},
-                ]},
-                {model:sq.models.policy_state_node, include:[
-                    {model:sq.models.policy_state_action, as:'enter_actions', include:[
-                        {model:sq.models.policy_action_node}
-                    ]},
-                    {model:sq.models.policy_state_action, as:'do_actions', include:[
-                        {model:sq.models.policy_action_node}
-                    ]},
-                    {model:sq.models.policy_state_action, as:'exit_actions', include:[
-                        {model:sq.models.policy_action_node}
-                    ]},
-                    {model:sq.models.policy_state_transition, as:'from_transitions', include:[
-                        {model:sq.models.policy_state_node, as:'to_state'},
-                        {model:sq.models.policy_data_source}
-                    ]},
-                ]},
+            include: [
+                {
+                    model: sq.models.policy_data_source, include: [
+                        {
+                            model: sq.models.modbus_read_meta, include: [
+                                { model: sq.models.driver }
+                            ]
+                        },
+                    ]
+                },
+                {
+                    model: sq.models.policy_action_node, include: [
+                        {
+                            model: sq.models.modbus_write_relay, include: [
+                                { model: sq.models.driver }
+                            ]
+                        },
+                    ]
+                },
+                {
+                    model: sq.models.policy_state_node, include: [
+                        {
+                            model: sq.models.policy_state_action,
+                            as: 'enter_actions',
+                            include: [{ model: sq.models.policy_action_node }],
+                            separate: true,
+                            order: [['priority', 'ASC']]
+                        },
+                        {
+                            model: sq.models.policy_state_action,
+                            as: 'do_actions',
+                            include: [{ model: sq.models.policy_action_node }],
+                            separate: true,
+                            order: [['priority', 'ASC']]
+                        },
+                        {
+                            model: sq.models.policy_state_action,
+                            as: 'exit_actions',
+                            include: [{ model: sq.models.policy_action_node }],
+                            separate: true,
+                            order: [['priority', 'ASC']]
+                        },
+                        {
+                            model: sq.models.policy_state_transition,
+                            as: 'from_transitions',
+                            include: [
+                                { model: sq.models.policy_state_node, as: 'to_state' },
+                            ],
+                            separate: true,
+                            order: [['priority', 'ASC']]
+                        },
+                    ]
+                },
             ],
         });
         return {
             count: ret.count,
-            policy_templates:ret.rows,
+            policy_templates: ret.rows,
         };
     },
-    add_data_source:async function(policy_template, modbus_read_meta, name) {
+    add_data_source: async function (policy_template, modbus_read_meta, name) {
         let exist_record = await policy_template.getPolicy_data_sources({
             where: { name: name },
         });
@@ -95,7 +122,7 @@ module.exports = {
             await exist_record.destroy();
         }
     },
-    add_state_node:async function(policy_template, name) {
+    add_state_node: async function (policy_template, name) {
         let exist_record = await policy_template.getPolicy_state_nodes({
             where: { name: name },
         });
@@ -112,53 +139,55 @@ module.exports = {
             await exist_record.destroy();
         }
     },
-    add_enter_action:async function(state_node, action_node, priority) {
+    add_enter_action: async function (state_node, action_node, priority) {
         let exist_record = await state_node.getEnter_actions(
             {
-                where:{priority:priority}
+                where: { priority: priority }
             }
         );
         if (exist_record.length == 0) {
             let new_record = await state_node.createEnter_action({
-                priority: priority});
+                priority: priority
+            });
             await new_record.setPolicy_action_node(action_node);
         }
     },
-    add_do_action:async function(state_node, action_node, priority) {
+    add_do_action: async function (state_node, action_node, priority) {
         let exist_record = await state_node.getDo_actions(
             {
-                where:{priority:priority}
+                where: { priority: priority }
             }
         );
         if (exist_record.length == 0) {
             let new_record = await state_node.createDo_action({
-                priority: priority});
+                priority: priority
+            });
             await new_record.setPolicy_action_node(action_node);
         }
     },
-    add_exit_action:async function(state_node, action_node, priority) {
+    add_exit_action: async function (state_node, action_node, priority) {
         let exist_record = await state_node.getExit_actions(
             {
-                where:{priority:priority}
+                where: { priority: priority }
             }
         );
         if (exist_record.length == 0) {
             let new_record = await state_node.createExit_action({
-                priority: priority});
+                priority: priority
+            });
             await new_record.setPolicy_action_node(action_node);
         }
     },
-    del_action:async function(action_id) {
+    del_action: async function (action_id) {
         let sq = db_opt.get_sq();
         let exist_record = await sq.models.policy_state_action.findByPk(action_id);
         if (exist_record) {
             await exist_record.destroy();
         }
     },
-    add_transition:async function(from_node, to_node, data_source, compare_condition, priority) {
+    add_transition: async function (from_node, to_node, compare_condition, priority) {
         let exist_record = await from_node.getFrom_transitions({
             where: {
-                dataSourceId: data_source.id,
                 compare_condition: compare_condition,
             }
         });
@@ -168,7 +197,6 @@ module.exports = {
                 priority: priority
             });
             await new_record.setTo_state(to_node);
-            await new_record.setPolicy_data_source(data_source);
         }
     },
     del_transition: async function (transition_id) {

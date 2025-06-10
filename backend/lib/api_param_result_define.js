@@ -79,11 +79,6 @@ function make_aprd() {
                         name: { type: String, mean: '状态节点名称', example: '温度正常' },
                     },
                 },
-                policy_data_source: {
-                    type: Object,
-                    mean: '策略数据源',
-                    explain: policy_data_source_info,
-                },
                 compare_condition: { type: String, mean: '比较条件', example: '>' },
                 priority: { type: Number, mean: '优先级', example: 1 },
             }
