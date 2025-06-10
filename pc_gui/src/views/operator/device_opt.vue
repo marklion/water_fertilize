@@ -16,12 +16,10 @@
                     </el-table-column>
                     <el-table-column label="动作">
                         <template slot-scope="scope">
-                            <span v-for="single_action in  scope.row.device_actions" :key="single_action.id">
-                                <el-tag type="warning" size="mini" closable @close="del_action(single_action)">
-                                    {{ single_action.modbus_write_relay.action }}
+                                <el-tag type="warning" size="mini">
+                                    {{ scope.row.modbus_write_relay.action }}
                                 </el-tag>
-                            </span>
-                            <el-tag v-if="scope.row.driver.type_id == 2" type="success" size="mini" @click="prepare_add_action(scope.row)">+</el-tag>
+                            <el-button v-if="scope.row.driver.type_id == 2" type="text" size="mini" @click="prepare_set_action(scope.row)">修改</el-button>
                         </template>
                     </el-table-column>
                 </el-table>
@@ -29,17 +27,17 @@
         </template>
     </page-content>
 
-    <el-dialog title="增加动作" :visible.sync="add_action_diag" width="50%" v-if="focus_device">
-        <el-form :model="add_action_form" ref="add_action_form" :rules="add_action_rules">
+    <el-dialog title="增加动作" :visible.sync="set_action_diag" width="50%" v-if="focus_device">
+        <el-form :model="set_action_form" ref="set_action_form" :rules="set_action_rules">
             <el-form-item label="动作" prop="relay_id">
-                <el-select v-model="add_action_form.relay_id" placeholder="请选择动作">
+                <el-select v-model="set_action_form.relay_id" placeholder="请选择动作">
                     <el-option v-for="(item, index) in focus_device.driver.modbus_write_relays" :key="index" :label="item.action" :value="item.id"></el-option>
                 </el-select>
             </el-form-item>
         </el-form>
         <span slot="footer">
-            <el-button @click="add_action_diag= false">取消</el-button>
-            <el-button type="primary" @click="add_action">确定</el-button>
+            <el-button @click="set_action_diag= false">取消</el-button>
+            <el-button type="primary" @click="set_action">确定</el-button>
         </span>
     </el-dialog>
 </div>
@@ -54,12 +52,12 @@ export default {
     },
     data: function () {
         return {
-            add_action_diag: false,
+            set_action_diag: false,
             focus_device: null,
-            add_action_form: {
+            set_action_form: {
                 relay_id: '',
             },
-            add_action_rules: {
+            set_action_rules: {
                 relay_id: [
                     { required: true, message: '请选择动作', trigger: 'change' },
                 ],
@@ -70,37 +68,22 @@ export default {
         refresh: function () {
             this.$refs.devices.refresh();
         },
-        prepare_add_action(device) {
+        prepare_set_action(device) {
             this.focus_device = device;
-            this.add_action_form.relay_id = null;
-            this.add_action_diag = true;
+            this.set_action_form.relay_id = null;
+            this.set_action_diag = true;
         },
-        add_action: async function () {
+        set_action: async function () {
             try {
-                let valid = await this.$refs.add_action_form.validate();
+                let valid = await this.$refs.set_action_form.validate();
                 if (!valid) {
                     return;
                 }
-                await this.$send_req('/operator/add_device_action', {
+                await this.$send_req('/operator/set_device_action', {
                     device_id: this.focus_device.id,
-                    relay_id: this.add_action_form.relay_id,
+                    relay_id: this.set_action_form.relay_id,
                 });
-                this.add_action_diag = false;
-                this.refresh();
-            } catch (error) {
-                console.log(error);
-            }
-        },
-        del_action: async function (action) {
-            try {
-                await this.$confirm('确定删除该动作吗？', '提示', {
-                    confirmButtonText: '确定',
-                    cancelButtonText: '取消',
-                    type: 'warning',
-                });
-                await this.$send_req('/operator/del_device_action', {
-                    action_id: action.id,
-                });
+                this.set_action_diag = false;
                 this.refresh();
             } catch (error) {
                 console.log(error);

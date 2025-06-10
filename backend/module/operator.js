@@ -26,7 +26,7 @@ module.exports = {
                 return await driver_lib.get_devices(company, body.pageNo);
             },
         },
-        add_device_action: {
+        set_device_action: {
             name: '添加设备动作',
             description: '添加设备动作',
             is_write: true,
@@ -48,50 +48,11 @@ module.exports = {
                 });
                 let relay = await sq.models.modbus_write_relay.findByPk(body.relay_id);
                 if (company && device && device.driver && relay && await company.hasDriver(device.driver) && await device.driver.hasModbus_write_relay(relay)) {
-                    let exist_action = await device.getDevice_actions({
-                        where: { modbusWriteRelayId: body.relay_id },
-                    });
-                    if (exist_action.length == 0) {
-                        let new_action = await device.createDevice_action({});
-                        await new_action.setModbus_write_relay(relay);
-                    }
+                    await device.setModbus_write_relay(relay);
                 }
                 else {
                     throw {
                         err_msg: '没有权限设定动作',
-                    }
-                }
-                return { result: true };
-            },
-        },
-        del_device_action: {
-            name: '删除设备动作',
-            description: '删除设备动作',
-            is_write: true,
-            is_get_api: false,
-            params: {
-                action_id: { type: Number, have_to: true, mean: '动作ID', example: 1 },
-            },
-            result: {
-                result: { type: Boolean, mean: '操作结果', example: true },
-            },
-            func: async function (body, token) {
-                let sq = db_opt.get_sq();
-                let company = await rbac_lib.get_company_by_token(token);
-                let action = await sq.models.device_action.findByPk(body.action_id, {
-                    include: [{
-                        model: sq.models.device,
-                        include: [{
-                            model: sq.models.driver,
-                        }],
-                    }],
-                });
-                if (company && action && action.device.driver && await company.hasDriver(action.device.driver)) {
-                    await action.destroy();
-                }
-                else {
-                    throw {
-                        err_msg: '没有权限删除动作',
                     }
                 }
                 return { result: true };

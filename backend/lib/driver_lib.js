@@ -91,6 +91,10 @@ module.exports = {
                     modbusReadMetumId: meta.id,
                 });
             }
+            let relays = await driver.getModbus_write_relays();
+            if (relays.length > 0) {
+                await device.setModbus_write_relay(relays[0]);
+            }
         }
     },
     del_device: async function (device_id) {
@@ -122,9 +126,7 @@ module.exports = {
                     ]
                 },
                 {
-                    model: sq.models.device_action, include: [
-                        { model: sq.models.modbus_write_relay }
-                    ]
+                    model: sq.models.modbus_write_relay
                 }
             ],
             distinct: true,

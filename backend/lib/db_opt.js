@@ -115,9 +115,6 @@ let db_opt = {
             reg_address:{ type: DataTypes.INTEGER},
             value:{ type: DataTypes.TEXT},
         },
-        device_action:{
-            id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-        },
         policy_template:{
             id:{type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true},
             name:{type: DataTypes.STRING},
@@ -173,10 +170,8 @@ let db_opt = {
         _sq.models.modbus_read_meta.hasMany(_sq.models.device_data);
         _sq.models.modbus_write_relay.belongsTo(_sq.models.driver);
         _sq.models.driver.hasMany(_sq.models.modbus_write_relay);
-        _sq.models.device_action.belongsTo(_sq.models.device);
-        _sq.models.device.hasMany(_sq.models.device_action);
-        _sq.models.device_action.belongsTo(_sq.models.modbus_write_relay);
-        _sq.models.modbus_write_relay.hasMany(_sq.models.device_action);
+        _sq.models.device.belongsTo(_sq.models.modbus_write_relay);
+        _sq.models.modbus_write_relay.hasMany(_sq.models.device);
 
         _sq.models.policy_template.belongsTo(_sq.models.company);
         _sq.models.company.hasMany(_sq.models.policy_template);
