@@ -415,5 +415,182 @@ module.exports = {
                 };
             },
         },
+        add_policy_instance: {
+            name: '创建策略实例',
+            description: '创建策略实例',
+            is_write: true,
+            is_get_api: false,
+            params: {
+                pt_id: { type: Number, have_to: true, mean: '策略模板ID', example: 1 },
+                name: { type: String, have_to: true, mean: '策略实例名称', example: '温度控制策略实例' },
+            },
+            result: {
+                result: { type: Boolean, mean: '操作结果', example: true },
+            },
+            func: async function (body, token) {
+                let company = await rbac_lib.get_company_by_token(token);
+                let pt = await db_opt.get_sq().models.policy_template.findByPk(body.pt_id);
+                if (pt && company && await company.hasPolicy_template(pt)) {
+                    await policy_lib.add_policy_instance(pt, body.name);
+                }
+                return { result: true };
+            }
+        },
+        del_policy_instance: {
+            name: '删除策略实例',
+            description: '删除策略实例',
+            is_write: true,
+            is_get_api: false,
+            params: {
+                pi_id: { type: Number, have_to: true, mean: '策略实例ID', example: 1 },
+            },
+            result: {
+                result: { type: Boolean, mean: '操作结果', example: true },
+            },
+            func: async function (body, token) {
+                let company = await rbac_lib.get_company_by_token(token);
+                let pi = await db_opt.get_sq().models.policy_instance.findByPk(body.pi_id, {
+                    include: [{ model: db_opt.get_sq().models.policy_template }]
+                });
+                if (pi && company && await company.hasPolicy_template(pi.policy_template)) {
+                    await policy_lib.del_policy_instance(body.pi_id);
+                }
+                else {
+                    throw { err_msg: '没有权限删除策略实例' };
+                }
+                return { result: true };
+            }
+        },
+        get_policy_instances: {
+            name: '获取策略实例列表',
+            description: '获取策略实例列表',
+            is_write: false,
+            is_get_api: true,
+            params: {
+            },
+            result: {
+                policy_instances: {
+                    type: Array,
+                    mean: '策略实例列表',
+                    explain: api_param_result_define.policy_instance_info,
+                },
+            },
+            func: async function (body, token) {
+                let company = await rbac_lib.get_company_by_token(token);
+                return await policy_lib.get_policy_instances(company, body.pageNo);
+            }
+        },
+        bind_device_data_source: {
+            name: '绑定设备数据源到策略实例',
+            description: '绑定设备数据源到策略实例',
+            is_write: true,
+            is_get_api: false,
+            params: {
+                pi_id: { type: Number, have_to: true, mean: '策略实例ID', example: 1 },
+                ds_id: { type: Number, have_to: true, mean: '数据源ID', example: 1 },
+                device_id: { type: Number, have_to: true, mean: '设备ID', example: 1 },
+            },
+            result: {
+                result: { type: Boolean, mean: '操作结果', example: true },
+            },
+            func: async function (body, token) {
+                let company = await rbac_lib.get_company_by_token(token);
+                let pi = await db_opt.get_sq().models.policy_instance.findByPk(body.pi_id, {
+                    include: [{ model: db_opt.get_sq().models.policy_template }]
+                });
+                let ds = await db_opt.get_sq().models.policy_data_source.findByPk(body.ds_id);
+                let device = await db_opt.get_sq().models.device.findByPk(body.device_id);
+                if (pi && company && ds && device && await company.hasPolicy_template(pi.policy_template)) {
+                    await policy_lib.bind_device_data_source(device, ds, pi);
+                    await policy_lib.update_policy_instance_status(pi);
+                }
+                else {
+                    throw { err_msg: '没有权限绑定设备数据源到策略实例' };
+                }
+                return { result: true };
+            }
+        },
+        unbind_device_data_source: {
+            name: '解绑设备数据源到策略实例',
+            description: '解绑设备数据源到策略实例',
+            is_write: true,
+            is_get_api: false,
+            params: {
+                pid_id: { type: Number, have_to: true, mean: '数据绑定实例ID', example: 1 },
+            },
+            result: {
+                result: { type: Boolean, mean: '操作结果', example: true },
+            },
+            func: async function (body, token) {
+                let company = await rbac_lib.get_company_by_token(token);
+                let pid = await db_opt.get_sq().models.policy_instance_data.findByPk(body.pid_id, {
+                    include: [{
+                        model: db_opt.get_sq().models.policy_instance, include: [
+                            { model: db_opt.get_sq().models.policy_template }]
+                    }]
+                });
+                if (pid && company && await company.hasPolicy_template(pid.policy_instance.policy_template)) {
+                    await policy_lib.unbind_device_data_source(body.pid_id);
+                    await policy_lib.update_policy_instance_status(pid.policy_instance);
+                }
+                return { result: true };
+            }
+        },
+        bind_device_action_node: {
+            name: '绑定设备动作节点到策略实例',
+            description: '绑定设备动作节点到策略实例',
+            is_write: true,
+            is_get_api: false,
+            params: {
+                pi_id: { type: Number, have_to: true, mean: '策略实例ID', example: 1 },
+                an_id: { type: Number, have_to: true, mean: '动作节点ID', example: 1 },
+                device_id: { type: Number, have_to: true, mean: '设备ID', example: 1 },
+            },
+            result: {
+                result: { type: Boolean, mean: '操作结果', example: true },
+            },
+            func: async function (body, token) {
+                let company = await rbac_lib.get_company_by_token(token);
+                let pi = await db_opt.get_sq().models.policy_instance.findByPk(body.pi_id, {
+                    include: [{ model: db_opt.get_sq().models.policy_template }]
+                });
+                let an = await db_opt.get_sq().models.policy_action_node.findByPk(body.an_id);
+                let device = await db_opt.get_sq().models.device.findByPk(body.device_id);
+                if (pi && company && an && device && await company.hasPolicy_template(pi.policy_template)) {
+                    await policy_lib.bind_device_action_node(device, an, pi);
+                    await policy_lib.update_policy_instance_status(pi);
+                }
+                else {
+                    throw { err_msg: '没有权限绑定设备动作节点到策略实例' };
+                }
+                return { result: true };
+            },
+        },
+        unbind_device_action_node: {
+            name: '解绑设备动作节点到策略实例',
+            description: '解绑设备动作节点到策略实例',
+            is_write: true,
+            is_get_api: false,
+            params: {
+                pia_id: { type: Number, have_to: true, mean: '动作绑定实例ID', example: 1 },
+            },
+            result: {
+                result: { type: Boolean, mean: '操作结果', example: true },
+            },
+            func: async function (body, token) {
+                let company = await rbac_lib.get_company_by_token(token);
+                let pia = await db_opt.get_sq().models.policy_instance_action.findByPk(body.pia_id, {
+                    include: [{
+                        model: db_opt.get_sq().models.policy_instance, include: [
+                            { model: db_opt.get_sq().models.policy_template }]
+                    }]
+                });
+                if (pia && company && await company.hasPolicy_template(pia.policy_instance.policy_template)) {
+                    await policy_lib.unbind_device_action_node(body.pia_id);
+                    await policy_lib.update_policy_instance_status(pia.policy_instance);
+                }
+                return { result: true };
+            }
+        },
     },
 }

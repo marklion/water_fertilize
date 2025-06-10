@@ -144,6 +144,13 @@ let db_opt = {
         policy_instance:{
             id:{type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true},
             name:{type: DataTypes.STRING},
+            status:{type: DataTypes.STRING, defaultValue: '待完善'},
+        },
+        policy_instance_data:{
+            id:{type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true},
+        },
+        policy_instance_action:{
+            id:{type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true},
         },
     },
     make_associate: function (_sq) {
@@ -203,6 +210,18 @@ let db_opt = {
         _sq.models.policy_template.hasMany(_sq.models.policy_instance);
         _sq.models.policy_instance.belongsTo(_sq.models.policy_state_node);
         _sq.models.policy_state_node.hasMany(_sq.models.policy_instance);
+        _sq.models.policy_instance_data.belongsTo(_sq.models.policy_instance);
+        _sq.models.policy_instance.hasMany(_sq.models.policy_instance_data);
+        _sq.models.policy_instance_action.belongsTo(_sq.models.policy_instance);
+        _sq.models.policy_instance.hasMany(_sq.models.policy_instance_action);
+        _sq.models.policy_instance_data.belongsTo(_sq.models.policy_data_source);
+        _sq.models.policy_data_source.hasMany(_sq.models.policy_instance_data);
+        _sq.models.policy_instance_action.belongsTo(_sq.models.policy_action_node);
+        _sq.models.policy_action_node.hasMany(_sq.models.policy_instance_action);
+        _sq.models.policy_instance_data.belongsTo(_sq.models.device);
+        _sq.models.device.hasMany(_sq.models.policy_instance_data);
+        _sq.models.policy_instance_action.belongsTo(_sq.models.device);
+        _sq.models.device.hasMany(_sq.models.policy_instance_action);
     },
     install: async function () {
         console.log('run install');

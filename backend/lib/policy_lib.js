@@ -26,6 +26,7 @@ module.exports = {
             limit: pageSize,
             offset: offset,
             order: [['id', 'DESC']],
+            distinct: true,
             include: [
                 {
                     model: sq.models.policy_data_source, include: [
@@ -205,5 +206,146 @@ module.exports = {
         if (exist_record) {
             await exist_record.destroy();
         }
+    },
+    add_policy_instance: async function (policy_template, name) {
+        let exist_record = await policy_template.getPolicy_instances({
+            where: { name: name },
+        });
+        if (exist_record.length == 0) {
+            let new_record = await policy_template.createPolicy_instance({
+                name: name,
+            });
+            let state_nodes = await policy_template.getPolicy_state_nodes();
+            if (state_nodes.length > 0) {
+                await new_record.setPolicy_state_node(state_nodes[0]);
+            }
+        }
+    },
+    del_policy_instance: async function (pi_id) {
+        let sq = db_opt.get_sq();
+        let exist_record = await sq.models.policy_instance.findByPk(pi_id);
+        if (exist_record) {
+            await exist_record.destroy();
+        }
+    },
+    get_policy_instances: async function (company, pageNo) {
+        let sq = db_opt.get_sq();
+        let pageSize = 20;
+        let offset = pageNo * pageSize;
+        let ret = await sq.models.policy_instance.findAndCountAll({
+            distinct: true,
+            limit: pageSize,
+            offset: offset,
+            order: [['policyTemplateId', 'ASC'], ['id', 'DESC']],
+            include: [
+                {
+                    model: sq.models.policy_template, include: [
+                        {
+                            model: sq.models.policy_data_source
+                        },
+                        {
+                            model: sq.models.policy_action_node
+                        },
+                    ],
+                    required:true,
+                    where:{
+                        companyId: company.id
+                    },
+                },
+                {
+                    model: sq.models.policy_state_node,
+                },
+                {
+                    model: sq.models.policy_instance_data,
+                    include: [
+                        { model: sq.models.policy_data_source },
+                        { model: sq.models.device }
+                    ],
+                },
+                {
+                    model: sq.models.policy_instance_action,
+                    include: [
+                        { model: sq.models.policy_action_node },
+                        { model: sq.models.device }
+                    ],
+                }
+            ],
+        });
+        return {
+            count: ret.count,
+            policy_instances: ret.rows,
+        };
+    },
+    bind_device_data_source: async function (device, policy_data_source, policy_instance) {
+        let exist_record = await policy_instance.getPolicy_instance_data({
+            where: { policyDataSourceId: policy_data_source.id },
+        });
+        if (exist_record.length == 0) {
+            await policy_instance.createPolicy_instance_datum({
+                deviceId: device.id,
+                policyDataSourceId: policy_data_source.id,
+            });
+        }
+    },
+    unbind_device_data_source: async function (pid_id) {
+        let sq = db_opt.get_sq();
+        let exist_record = await sq.models.policy_instance_data.findByPk(pid_id);
+        if (exist_record) {
+            await exist_record.destroy();
+        }
+    },
+    bind_device_action_node: async function (device, policy_action_node, policy_instance) {
+        let exist_record = await policy_instance.getPolicy_instance_actions({
+            where: { policyActionNodeId: policy_action_node.id },
+        });
+        if (exist_record.length == 0) {
+            await policy_instance.createPolicy_instance_action({
+                deviceId: device.id,
+                policyActionNodeId: policy_action_node.id,
+            });
+        }
+    },
+    unbind_device_action_node: async function (pia_id) {
+        let sq = db_opt.get_sq();
+        let exist_record = await sq.models.policy_instance_action.findByPk(pia_id);
+        if (exist_record) {
+            await exist_record.destroy();
+        }
+    },
+    update_policy_instance_status: async function (policy_instance) {
+        let status = '待完善'
+        let policy_template = await policy_instance.getPolicy_template({
+            include: [
+                { model: db_opt.get_sq().models.policy_data_source },
+                { model: db_opt.get_sq().models.policy_action_node },
+            ]
+        });
+        let data_finish = true;
+        for (let index = 0; index < policy_template.policy_data_sources.length; index++) {
+            const element = policy_template.policy_data_sources[index];
+            let exist_record = await policy_instance.getPolicy_instance_data({
+                where: { policyDataSourceId: element.id },
+            });
+            if (exist_record.length == 0) {
+                data_finish = false;
+                break;
+            }
+        }
+        let action_finish = true;
+        for (let index = 0; index < policy_template.policy_action_nodes.length; index++) {
+            const element = policy_template.policy_action_nodes[index];
+            let exist_record = await policy_instance.getPolicy_instance_actions({
+                where: { policyActionNodeId: element.id },
+            });
+            if (exist_record.length == 0) {
+                action_finish = false;
+                break;
+            }
+        }
+        if (data_finish && action_finish) {
+            status = '就绪';
+        }
+        policy_instance.status = status;
+        await policy_instance.save();
     },
 };

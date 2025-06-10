@@ -105,6 +105,12 @@ export const asyncRoutes = [
         name: 'policyTemplate',
         meta: { title: '策略模板配置' }
       },
+      {
+        path: 'policy_instance',
+        component: () => import('@/views/policy_config/policy_instance'), // Parent router-view
+        name: 'policyInstance',
+        meta: { title: '策略实例配置' }
+      },
     ]
   },
   {

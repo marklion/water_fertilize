@@ -203,6 +203,83 @@ function make_aprd() {
                 explain: policy_state_node_info,
             },
         },
+        policy_instance_info:{
+            id: { type: Number, mean: '策略实例ID', example: 1 },
+            name: { type: String, mean: '策略实例名称', example: '温度控制实例' },
+            status: { type: String, mean: '策略实例状态', example: '运行中' },
+            policy_template: {
+                type: Object,
+                mean: '策略模板信息',
+                explain: {
+                    id: { type: Number, mean: '策略模板ID', example: 1 },
+                    name: { type: String, mean: '策略模板名称', example: '温度控制策略' },
+                    policy_data_sources: {
+                        type: Array,
+                        mean: '策略数据源列表',
+                        explain: policy_data_source_info,
+                    },
+                    policy_action_nodes: {
+                        type: Array,
+                        mean: '策略动作节点列表',
+                        explain: policy_action_node_info,
+                    },
+                }
+            },
+            policy_state_nodes:{
+                type: Array,
+                mean: '策略状态节点列表',
+                explain: {
+                    id:policy_state_node_info.id,
+                    name:policy_state_node_info.name
+                },
+            },
+            policy_instance_data:{
+                type: Array,
+                mean: '策略实例数据列表',
+                explain: {
+                    id: { type: Number, mean: '数据ID', example: 1 },
+                    policy_data_source: {
+                        type: Object,
+                        mean: '策略数据源',
+                        explain: {
+                            id: policy_data_source_info.id,
+                            name: policy_data_source_info.name,
+                        }
+                    },
+                    device:{
+                        type: Object,
+                        mean: '设备信息',
+                        explain: {
+                            id: { type: Number, mean: '设备ID', example: 1 },
+                            name: { type: String, mean: '设备名称', example: '设备A' },
+                        }
+                    },
+                }
+            },
+            policy_instance_actions:{
+                type: Array,
+                mean: '策略实例动作列表',
+                explain: {
+                    id: { type: Number, mean: '动作ID', example: 1 },
+                    policy_action_node: {
+                        type: Object,
+                        mean: '策略动作节点',
+                        explain: {
+                            id: policy_action_node_info.id,
+                            name: policy_action_node_info.name,
+                        },
+                    },
+                    device: {
+                        type: Object,
+                        mean: '设备信息',
+                        explain: {
+                            id: { type: Number, mean: '设备ID', example: 1 },
+                            name: { type: String, mean: '设备名称', example: '设备A' },
+                        }
+                    },
+                }
+            },
+        },
     };
 }
 module.exports = make_aprd();
