@@ -15,11 +15,11 @@
                         </template>
                     </el-table-column>
                     <el-table-column label="动作">
-                        <template slot-scope="scope">
-                                <el-tag type="warning" size="mini">
-                                    {{ scope.row.modbus_write_relay.action }}
-                                </el-tag>
-                            <el-button v-if="scope.row.driver.type_id == 2" type="text" size="mini" @click="prepare_set_action(scope.row)">修改</el-button>
+                        <template slot-scope="scope" v-if="scope.row.driver.type_id == 2">
+                            <el-tag type="warning" size="mini">
+                                {{ scope.row.modbus_write_relay.action }}
+                            </el-tag>
+                            <el-button type="text" size="mini" @click="prepare_set_action(scope.row)">修改</el-button>
                         </template>
                     </el-table-column>
                 </el-table>
