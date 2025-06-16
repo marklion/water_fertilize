@@ -2,6 +2,7 @@ const express = require('express');
 const json2md = require('json2md');
 const moment = require('moment');
 const dotenv = require('dotenv');
+const { startDeviceWorker } = require('./worker/lib/device_worker');
 const envFile = `.env.${process.env.NODE_ENV || 'development'}`;
 dotenv.config({ path: envFile });
 const app = express();
@@ -187,3 +188,6 @@ process.on('SIGINT', () => {
     console.log('SIGINT signal received. Closing server...');
     server.close();
 });
+
+// 启动woker主循环
+setInterval(startDeviceWorker, 10000)
