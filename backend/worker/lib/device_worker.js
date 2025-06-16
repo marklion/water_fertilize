@@ -1,5 +1,5 @@
-const modbusDev = require('../backend/worker/lib/modbus_dev');
-const LORA_TCP = require('../backend/worker/lib/LORA_TCP');
+const modbusDev = require('./modbus_dev');
+const LORA_TCP = require('./LORA_TCP');
 const net = require('net');
 class DeviceConnection {
     constructor(ip, port) {
