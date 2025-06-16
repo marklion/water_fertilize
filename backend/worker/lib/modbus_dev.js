@@ -6,7 +6,8 @@ function make_req(fn, address, value, slaver_id) {
     if (fn == 3) {
         pdu_data = ModbusPDU.ReadHoldingRegisters.Request.build(address, 1);
     } else if (fn == 5) {
-        pdu_data = ModbusPDU.WriteSingleCoil.Request.build(address, value);
+        let coil_value = value == 'f' ? 0xFF00 : 0x0000; // 线圈值为1时，寄存器值为0xFF00，否则为0x0000
+        pdu_data = ModbusPDU.WriteSingleCoil.Request.build(address, coil_value);
     }
     let frame = Buffer.concat([
         Buffer.from([slaver_id]),
@@ -38,30 +39,6 @@ function get_slave_id(device) {
     let ck = JSON.parse(device.connection_key);
     return ck.slaver_id || 0x01; // 默认从站ID为1
 }
-function hexStringToUint8Array(hexString) {
-    // 移除字符串中的空格（如果有），并转为小写（可选）
-    const cleanedHex = hexString.replace(/\s/g, '').toLowerCase();
-
-    // 验证是否为有效的十六进制字符串
-    if (!/^[0-9a-f]*$/i.test(cleanedHex)) {
-        throw new Error('输入包含非十六进制字符');
-    }
-
-    // 处理奇数长度：在开头补零
-    const paddedHex = cleanedHex.length % 2 !== 0 ? '0' + cleanedHex : cleanedHex;
-
-    // 计算字节长度并初始化 Uint8Array
-    const byteLen = paddedHex.length / 2;
-    const buffer = new Uint8Array(byteLen);
-
-    // 每两个字符解析为一个字节
-    for (let i = 0; i < byteLen; i++) {
-        const byteHex = paddedHex.substring(i * 2, i * 2 + 2);
-        buffer[i] = parseInt(byteHex, 16);
-    }
-
-    return buffer;
-}
 module.exports = {
     dev2cmd: async function (device) {
         let ret = []
@@ -69,10 +46,9 @@ module.exports = {
         let driver = await device.getDriver({
             include: [{
                 model: sq.models.modbus_read_meta,
-            }, {
-                model: sq.models.modbus_write_relay,
             }]
         })
+        let write_relay = await device.getModbus_write_relay();
         let fn;
         switch (driver.type_id) {
             case 1: // 读保持寄存器
@@ -92,11 +68,11 @@ module.exports = {
                 req: req,
             });
         }
-        for (let index = 0; index < driver.modbus_write_relays.length; index++) {
-            const element = driver.modbus_write_relays[index];
-            let req = make_req(fn, element.reg_address, hexStringToUint8Array(element.value), get_slave_id(device));
+        if (write_relay)
+        {
+            let req = make_req(fn, write_relay.reg_address, write_relay.value, get_slave_id(device));
             ret.push({
-                address: element.reg_address,
+                address: write_relay.reg_address,
                 req: req,
             });
         }
@@ -124,13 +100,15 @@ module.exports = {
         });
         if (target && target.data_type) {
             let data = parse_reply(reply, target.data_type, get_slave_id(device));
-            let device_data = await driver.getDeviceData({
+            let device_data = await device.getDevice_data({
                 where: {
-                    modbusReadMetaId: target.id,
+                    modbusReadMetumId: target.id,
                 },
             });
-            device_data.value = data;
-            await device_data.save();
+            device_data[0].value = data;
+            device.error_info = '';
+            await device.save();
+            await device_data[0].save();
         }
     },
     error2dev: async function (device, err_msg) {
