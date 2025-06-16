@@ -1,8 +1,11 @@
+// LORA_TCP.js
 module.exports = {
-    dev2tcp:async function(device) {
+    dev2tcp: function (dev) {
+        
         return {
-            ip:'1.2.3.4',
-            port: 502,
-        }
-    },
+            ip: '127.0.0.1',
+            port: 8888,
+        };
+    }
+    
 };
