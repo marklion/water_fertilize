@@ -131,6 +131,7 @@ function make_aprd() {
             id: { type: Number, mean: '设备ID', example: 1 },
             name: { type: String, mean: '设备名称', example: '设备A' },
             connection_key: { type: String, mean: '连接密钥', example: '123456' },
+            error_info:{type: String, mean: '错误信息', example: '无'},
             driver_id: { type: Number, mean: '驱动ID', example: 1 },
             driver: {
                 type: Object,

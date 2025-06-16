@@ -104,6 +104,7 @@ let db_opt = {
             id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
             name: { type: DataTypes.STRING },
             connection_key: { type: DataTypes.TEXT },
+            error_info:{ type: DataTypes.TEXT },
         },
         device_data:{
             id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
