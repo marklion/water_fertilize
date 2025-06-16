@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "cls-hooked": "^4.2.2",
+    "crc": "^4.3.2",
     "cross-env": "^7.0.3",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
@@ -22,6 +23,8 @@
     "markdown": "^0.5.0",
     "markdown-it": "^13.0.1",
     "markdown-it-toc-and-anchor": "^4.2.0",
+    "modbus-pdu": "^1.14.0",
+    "modbus-serial": "^8.0.21-no-serial-port",
     "moment": "^2.30.1",
     "mysql2": "^3.14.1",
     "pg-hstore": "^2.3.4",

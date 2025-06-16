@@ -104,6 +104,7 @@ let db_opt = {
             id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
             name: { type: DataTypes.STRING },
             connection_key: { type: DataTypes.TEXT },
+            error_info:{ type: DataTypes.TEXT },
         },
         device_data:{
             id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
@@ -224,7 +225,6 @@ let db_opt = {
         _sq.models.device.hasMany(_sq.models.policy_instance_action);
     },
     install: async function () {
-        console.log('run install');
         await ensureDatabaseExists();
         let sq = this.get_sq();
         Object.keys(this.model).forEach((key) => {

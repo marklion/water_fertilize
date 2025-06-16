@@ -123,11 +123,11 @@ export default {
             driver_type: {
                 modbus_meter: {
                     type_id: 1,
-                    name: 'Modbus 仪表',
+                    name: 'Modbus 仪表(3)',
                 },
                 modbus_relay: {
                     type_id: 2,
-                    name: 'Modbus 继电器',
+                    name: 'Modbus 继电器(5)',
                 },
             },
             data_type: [

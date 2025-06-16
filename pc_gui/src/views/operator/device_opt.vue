@@ -22,6 +22,7 @@
                             <el-button type="text" size="mini" @click="prepare_set_action(scope.row)">修改</el-button>
                         </template>
                     </el-table-column>
+                    <el-table-column prop="error_info" label="告警" />
                 </el-table>
             </div>
         </template>

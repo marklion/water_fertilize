@@ -1,6 +1,9 @@
-const modbusDev = require('./modbus_dev');
-const LORA_TCP = require('./LORA_TCP');
+const modbusDev = require('./lib/modbus_dev');
+const LORA_TCP = require('./lib/LORA_TCP');
+const worker_utils = require('./lib/woker_utils');
 const net = require('net');
+const db_opt = require('../lib/db_opt');
+const { log } = require('console');
 class DeviceConnection {
     constructor(ip, port) {
         if (!ip || !port) {
@@ -67,15 +70,26 @@ class DeviceConnection {
     _listen() {
         this.client.on('data', (data) => {
             this.buffer = Buffer.concat([this.buffer, data]);
+            console.log(`Received data: ${worker_utils.uint8ArrayToHexString(new Uint8Array(data))}`);
 
-            while (this.buffer.length >= 8) {
-                const response = this.buffer.slice(0, 8);
-                this.buffer = this.buffer.slice(8);
+            while (this.buffer.length >= 7) {
+                let prefix_data = this.buffer.slice(0, 4);
+                let prefix = worker_utils.uint8ArrayToHexString(prefix_data);
+                let length = this.buffer[6] + 5;
 
-                if (this.queue.length > 0) {
-                    const { resolve, timeout } = this.queue.shift();
+                if (this.buffer.length < length + 4) {
+                    break; // 等待更多数据
+                }
+                let command_data = this.buffer.slice(4, 4 + length);
+                this.buffer = this.buffer.slice(length + 4);
+                const idx = this.queue.findIndex(item => item.prefix.toUpperCase() === prefix.toUpperCase());
+                if (idx > -1) {
+                    const { resolve, timeout } = this.queue.splice(idx, 1)[0];
                     clearTimeout(timeout);
-                    resolve(response);
+                    resolve(command_data);
+                }
+                else {
+                    this._reconnect();
                 }
             }
         });
@@ -99,6 +113,7 @@ class DeviceConnection {
             reject(new Error('连接丢失 正在重连中...'));
         });
         this.queue = [];
+        this.buffer = Buffer.alloc(0);
 
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
             setTimeout(() => {
@@ -115,7 +130,7 @@ class DeviceConnection {
         }
     }
 
-    async sendCommand(command) {
+    async sendCommand(command, prefix) {
         if (this.status !== 'connected') {
             await this.connect();
             if (this.status !== 'connected') {
@@ -132,10 +147,12 @@ class DeviceConnection {
                 }
             }, 5000);
 
-            this.queue.push({ resolve, reject, timeout });
-
+            this.queue.push({ resolve, reject, timeout, prefix });
+            let prefix_data = worker_utils.hexStringToUint8Array(prefix);
+            let real_data = Buffer.concat([Buffer.from(prefix_data), command]);
+            console.log(`发送数据: ${worker_utils.uint8ArrayToHexString(new Uint8Array(real_data))}`);
             // 添加写入错误处理
-            this.client.write(command, (err) => {
+            this.client.write(real_data, (err) => {
                 if (err) {
                     console.error(`写入错误: ${err.message}`);
                     this._reconnect();
@@ -148,7 +165,7 @@ class DeviceConnection {
         this.heartbeatInterval = setInterval(() => {
             if (this.status === 'connected') {
                 const heartbeatCmd = Buffer.from('000000000000', 'hex');
-                this.sendCommand(heartbeatCmd).catch(err => {
+                this.sendCommand(heartbeatCmd, '').catch(err => {
                     console.error(`Heartbeat failed: ${err.message}`);
                 });
             }
@@ -158,31 +175,27 @@ class DeviceConnection {
 
 const connectionPool = {};
 
-function getConnection(dev) {
-    const { ip, port } = LORA_TCP.dev2tcp(dev);
+async function getConnection(dev) {
+    const { ip, port, prefix } = await LORA_TCP.dev2tcp(dev);
     const key = `${ip}:${port}`;
 
     if (!connectionPool[key]) {
         connectionPool[key] = new DeviceConnection(ip, port);
     }
 
-    return connectionPool[key];
+    return { connection: connectionPool[key], prefix: prefix };
 }
 
 async function processDevice(dev) {
     try {
-        const command = await modbusDev.dev2cmd(dev);
-        if (!command) {
-            modbusDev.error2dev('空命令', dev);
-            return;
+        const commands = await modbusDev.dev2cmd(dev);
+        for (const command of commands) {
+            const { connection, prefix } = await getConnection(dev);
+            const reply = await connection.sendCommand(command.req, prefix);
+            await modbusDev.reply2dev(dev, reply, command.address);
         }
-
-        const connection = getConnection(dev);
-        const reply = await connection.sendCommand(command);
-
-        modbusDev.reply2dev(reply, dev);
     } catch (err) {
-        modbusDev.error2dev(err.message, dev);
+        await modbusDev.error2dev(dev, err.message);
     }
 }
 
@@ -192,7 +205,7 @@ async function startDeviceWorker() {
     try {
         let devices = await sq.models.device.findAll();
         for (const dev of devices) {
-            processDevice(dev);
+            await processDevice(dev);
         }
     } catch (err) {
         console.error('错误的设备:', err);
