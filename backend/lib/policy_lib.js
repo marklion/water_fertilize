@@ -438,5 +438,76 @@ module.exports = {
         let now = moment();
         ret = now.diff(last_time, 'seconds');
         return ret;
+    },
+    shouldTransition: async function(policyInstance, conditionJson){
+        async function evaluateCondition(condition) {
+            // 处理逻辑组合条件
+            if (condition.and) {
+                const results = await Promise.all(condition.and.map(subCond => evaluateCondition(subCond)));
+                return results.every(result => result);
+            }
+            if (condition.or) {
+                const results = await Promise.all(condition.or.map(subCond => evaluateCondition(subCond)));
+                return results.some(result => result);
+            }
+            // 处理基础条件类型
+            const condType = condition.type;
+            switch (condType) {
+                case 'value_compare':
+                    //常量判断
+                    return handleValueCompare(condition);
+                case 'duration_compare':
+                    //市场判断
+                    return handleDurationCompare(condition);
+                default:
+                    throw new Error(`不支持的类型判断: ${condType}`);
+            }
+        }
+
+        async function handleValueCompare(condition) {
+            // 获取左侧值
+            const leftValue = await module.exports.get_value_by_pi_and_pid(
+                policyInstance.id,
+                condition.left_pid
+            );
+
+            let rightValue;
+            // 判断右侧是常量还是其他数据源
+            if (condition.hasOwnProperty('right_value')) {
+                rightValue = condition.right_value;
+            } else if (condition.right_pid) {
+                rightValue = await module.exports.get_value_by_pi_and_pid(
+                    policyInstance.id,
+                    condition.right_pid
+                );
+            } else {
+                throw new Error('在比较值的运算中，左右侧的值未指定');
+            }
+
+            return compareValues(leftValue, rightValue, condition.operator);
+        }
+
+        async function handleDurationCompare(condition) {
+            const duration = await module.exports.get_continue_sec(policyInstance.id);
+            return compareValues(duration, condition.threshold, condition.operator);
+        }
+ 
+        function compareValues(left, right, operator) {
+            const ops = {
+                '>': (a, b) => a > b,
+                '<': (a, b) => a < b,
+                '==': (a, b) => a === b,
+                '>=': (a, b) => a >= b,
+                '<=': (a, b) => a <= b
+            };
+
+            if (!ops[operator]) {
+                throw new Error(`不支持的条件判断: ${operator}`);
+            }
+            return ops[operator](left, right);
+        }
+
+        return await evaluateCondition(conditionJson);
     }
+    
 };
