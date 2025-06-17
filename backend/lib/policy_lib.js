@@ -346,6 +346,7 @@ module.exports = {
         if (data_finish && action_finish) {
             status = '就绪';
             await this.record_state_init_values(policy_instance);
+            policy_instance.state_refresh_time = moment().format('YYYY-MM-DD HH:mm:ss');
         }
         policy_instance.status = status;
         await policy_instance.save();
@@ -528,7 +529,7 @@ module.exports = {
             return ops[operator](left, right);
         }
 
-        return await evaluateCondition(conditionJson);
+        return await evaluateCondition(JSON.parse(conditionJson));
     },
     record_state_init_values:async function(pi) {
         let sq = db_opt.get_sq();
