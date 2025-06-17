@@ -2,21 +2,7 @@ const moment = require('moment');
 const db_opt = require('../lib/db_opt');
 const policy_lib = require('../lib/policy_lib');
 async function condition_exec(pi, compare_condition) {
-    let data_source_id = parseInt(compare_condition)
-    let value = await policy_lib.get_value_by_pi_and_pid(pi.id, data_source_id);
-    console.log(`数据源ID(${data_source_id})的值是${value}`);
-    let stay_sec = await policy_lib.get_continue_sec(pi.id);
-    console.log(`持续时间是${stay_sec}秒`);
-
-
-    if (!condition_exec.counter) {
-        condition_exec.counter = 0;
-    }
-    condition_exec.counter++;
-    if (condition_exec.counter % 10 === 0) {
-        return true;
-    }
-    return false;
+    return await policy_lib.shouldTransition(pi, compare_condition)
 }
 
 async function do_action(pi, psa) {
