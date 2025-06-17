@@ -1,3 +1,4 @@
+const moment = require('moment');
 const db_opt = require('./db_opt');
 module.exports = {
     add_policy_template: async function (company, name) {
@@ -247,8 +248,8 @@ module.exports = {
                             model: sq.models.policy_action_node
                         },
                     ],
-                    required:true,
-                    where:{
+                    required: true,
+                    where: {
                         companyId: company.id
                     },
                 },
@@ -348,4 +349,94 @@ module.exports = {
         policy_instance.status = status;
         await policy_instance.save();
     },
+    make_pi_runtime: async function (pi) {
+        let sq = db_opt.get_sq();
+        let pt = await pi.getPolicy_template();
+        let psn = await pi.getPolicy_state_node();
+        let pids = await pi.getPolicy_instance_data({
+            include: [{
+                model: sq.models.policy_data_source,
+                include: [{
+                    model: sq.models.modbus_read_meta,
+                }],
+            }, {
+                model: sq.models.device,
+            }]
+        });
+        let pias = await pi.getPolicy_instance_actions({
+            include: [{
+                model: sq.models.policy_action_node,
+                include: [{
+                    model: sq.models.modbus_write_relay,
+                }],
+            }, {
+                model: sq.models.device,
+                include: [{
+                    model: sq.models.modbus_write_relay,
+                }],
+            }]
+        });
+        let data = [];
+        let actions = [];
+        for (let pid of pids) {
+            let data_items = await pid.device.getDevice_data({
+                where: {
+                    modbusReadMetumId: pid.policy_data_source.modbus_read_metum.id,
+                }
+            });
+            data.push({
+                id: pid.id,
+                data_source_name: pid.policy_data_source.name,
+                value: data_items[0].value,
+            });
+        }
+        for (let pia of pias) {
+            actions.push({
+                id: pia.id,
+                action_node_name: pia.policy_action_node.name,
+                do: pia.device.modbus_write_relay.id == pia.policy_action_node.modbus_write_relay.id,
+            });
+        }
+        return {
+            id: pi.id,
+            name: pi.name,
+            template_name: pt.name,
+            state_name: psn.name,
+            data: data,
+            actions: actions,
+        }
+    },
+    get_value_by_pi_and_pid:async function(pi_id, pds_id) {
+        let ret = 0;
+        let sq = db_opt.get_sq();
+        let pi = await sq.models.policy_instance.findByPk(pi_id);
+        let pds = await sq.models.policy_data_source.findByPk(pds_id, {
+            include:[
+                {model:sq.models.modbus_read_meta}
+            ]
+        });
+        let pids = await pds.getPolicy_instance_data({
+            where: { policyInstanceId: pi.id },
+            include: [{ model: sq.models.device }],
+        });
+        if (pids.length == 1)
+        {
+            let device = pids[0].device;
+            let mrm = pds.modbus_read_metum;
+            let device_data = await device.getDevice_data({
+                where: { modbusReadMetumId: mrm.id },
+            });
+            ret = device_data[0] ? device_data[0].value : 0;
+        }
+        return ret;
+    },
+    get_continue_sec:async function(pi_id) {
+        let ret = 0;
+        let sq = db_opt.get_sq();
+        let pi = await sq.models.policy_instance.findByPk(pi_id);
+        let last_time = moment(pi.state_refresh_time);
+        let now = moment();
+        ret = now.diff(last_time, 'seconds');
+        return ret;
+    }
 };

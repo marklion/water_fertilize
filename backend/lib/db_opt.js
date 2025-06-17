@@ -146,6 +146,7 @@ let db_opt = {
             id:{type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true},
             name:{type: DataTypes.STRING},
             status:{type: DataTypes.STRING, defaultValue: '待完善'},
+            state_refresh_time:{type: DataTypes.STRING},
         },
         policy_instance_data:{
             id:{type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true},

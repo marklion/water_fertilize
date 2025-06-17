@@ -13,6 +13,7 @@ app.help_info = [];
 let mkapi = require('./lib/api_utils');
 const db_opt = require('./lib/db_opt');
 const rbac_lib = require('./lib/rbac_lib');
+const policy_worker = require('./worker/policy_worker');
 async function module_install(admin_role_id, app, module) {
     let mo = module;
     await rbac_lib.connect_role2module(admin_role_id, (await rbac_lib.add_module(mo.name, mo.description)).id);
@@ -189,5 +190,15 @@ process.on('SIGINT', () => {
     server.close();
 });
 
-// 启动woker主循环
-setInterval(startDeviceWorker, 2000)
+async function worker_loop() {
+    await startDeviceWorker();
+    await policy_worker.trigger_policy_sms();
+}
+function start_worker_loop_after(m_sec) {
+    setTimeout(async () => {
+        await worker_loop();
+        start_worker_loop_after(m_sec);
+    }, m_sec)
+}
+
+start_worker_loop_after(3000);
