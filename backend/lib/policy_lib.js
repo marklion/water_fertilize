@@ -473,7 +473,7 @@ module.exports = {
             // 获取左侧值
             const leftValue = await module.exports.get_value_by_pi_and_pds(
                 policyInstance.id,
-                condition.left_psd_id
+                condition.left_pds_id
             );
 
             let rightValue;
@@ -496,7 +496,7 @@ module.exports = {
             // 获取左侧值
             const leftValue = await module.exports.get_state_value_offset(
                 policyInstance.id,
-                condition.left_psd_id
+                condition.left_pds_id
             );
 
             let rightValue;
