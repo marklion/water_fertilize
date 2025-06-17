@@ -461,6 +461,8 @@ module.exports = {
                 case 'duration_compare':
                     //市场判断
                     return handleDurationCompare(condition);
+                case 'change_compare':
+                    return handleChangeValueCompare(condition);
                 default:
                     throw new Error(`不支持的类型判断: ${condType}`);
             }
@@ -470,7 +472,7 @@ module.exports = {
             // 获取左侧值
             const leftValue = await module.exports.get_value_by_pi_and_pds(
                 policyInstance.id,
-                condition.left_pid
+                condition.left_psd_id
             );
 
             let rightValue;
@@ -480,7 +482,7 @@ module.exports = {
             } else if (condition.right_pid) {
                 rightValue = await module.exports.get_value_by_pi_and_pds(
                     policyInstance.id,
-                    condition.right_pid
+                    condition.right_psd_id
                 );
             } else {
                 throw new Error('在比较值的运算中，左右侧的值未指定');
@@ -489,6 +491,23 @@ module.exports = {
             return compareValues(leftValue, rightValue, condition.operator);
         }
 
+        async function handleChangeValueCompare(condition) {
+            // 获取左侧值
+            const leftValue = await module.exports.get_state_value_offset(
+                policyInstance.id,
+                condition.left_psd_id
+            );
+
+            let rightValue;
+            // 判断右侧是常量才进行比较
+            if (condition.hasOwnProperty('right_value')) {
+                rightValue = condition.right_value;
+            } else {
+                throw new Error('在比较值的运算中，左右侧的值未指定');
+            }
+
+            return compareValues(leftValue, rightValue, condition.operator);
+        }
         async function handleDurationCompare(condition) {
             const duration = await module.exports.get_continue_sec(policyInstance.id);
             return compareValues(duration, condition.threshold, condition.operator);
