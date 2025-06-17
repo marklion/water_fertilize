@@ -466,7 +466,7 @@ module.exports = {
 
         async function handleValueCompare(condition) {
             // 获取左侧值
-            const leftValue = await get_value_by_pi_and_pid(
+            const leftValue = await module.exports.get_value_by_pi_and_pid(
                 policyInstance.id,
                 condition.left_pid
             );
@@ -476,7 +476,7 @@ module.exports = {
             if (condition.hasOwnProperty('right_value')) {
                 rightValue = condition.right_value;
             } else if (condition.right_pid) {
-                rightValue = await get_value_by_pi_and_pid(
+                rightValue = await module.exports.get_value_by_pi_and_pid(
                     policyInstance.id,
                     condition.right_pid
                 );
@@ -488,7 +488,7 @@ module.exports = {
         }
 
         async function handleDurationCompare(condition) {
-            const duration = await get_continue_sec(policyInstance.id);
+            const duration = await module.exports.get_continue_sec(policyInstance.id);
             return compareValues(duration, condition.threshold, condition.operator);
         }
  
