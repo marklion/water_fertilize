@@ -281,6 +281,26 @@ function make_aprd() {
                 }
             },
         },
+        policy_instance_runtime_info: {
+            id: { type: Number, mean: '策略实例运行时ID', example: 1 },
+            name: { type: String, mean: '策略实例名称', example: '温度控制实例' },
+            template_name:{type: String, mean: '策略模板名称', example: '温度控制策略'},
+            state_name: { type: String, mean: '当前状态名称', example: '温度正常' },
+            data:{type: Array, mean: '策略实例数据列表', explain: {
+                id: { type: Number, mean: '数据ID', example: 1 },
+                data_source_name: { type: String, mean: '数据源名称', example: '温度传感器' },
+                value: { type: Number, mean: '数据值', example: 25.1},
+            }},
+            actions:{
+                type: Array,
+                mean: '策略实例动作列表',
+                explain: {
+                    id: { type: Number, mean: '动作ID', example: 1 },
+                    action_node_name: { type: String, mean: '动作节点名称', example: '开灯' },
+                    do: { type: Boolean, mean: '是否执行', example: true },
+                }
+            },
+        },
     };
 }
 module.exports = make_aprd();

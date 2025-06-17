@@ -200,7 +200,6 @@ async function processDevice(dev) {
 }
 
 async function startDeviceWorker() {
-    console.log('Starting device worker...');
     let sq = db_opt.get_sq();
     try {
         let devices = await sq.models.device.findAll();
