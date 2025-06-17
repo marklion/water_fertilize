@@ -290,6 +290,7 @@ function make_aprd() {
                 id: { type: Number, mean: '数据ID', example: 1 },
                 data_source_name: { type: String, mean: '数据源名称', example: '温度传感器' },
                 value: { type: Number, mean: '数据值', example: 25.1},
+                init_value: { type: Number, mean: '初始值', example: 0 },
             }},
             actions:{
                 type: Array,

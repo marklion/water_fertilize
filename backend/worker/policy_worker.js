@@ -97,6 +97,7 @@ async function trigger_single_sm(pi_id) {
     if (state_change) {
         pi.state_refresh_time = moment().format('YYYY-MM-DD HH:mm:ss');
         await pi.save();
+        await policy_lib.record_state_init_values(pi);
         await trigger_single_sm(pi.id);
     }
 }

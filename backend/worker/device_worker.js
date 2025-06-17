@@ -58,7 +58,8 @@ class DeviceConnection {
             this.status = 'connected';
             this.reconnectAttempts = 0;
             this._listen();
-            this.startHeartbeat();
+            //:wa
+            // this.startHeartbeat();
         } catch (err) {
             this.status = 'disconnected';
             clearInterval(this.heartbeatInterval);
@@ -75,7 +76,13 @@ class DeviceConnection {
             while (this.buffer.length >= 7) {
                 let prefix_data = this.buffer.slice(0, 4);
                 let prefix = worker_utils.uint8ArrayToHexString(prefix_data);
-                let length = this.buffer[6] + 5;
+                let length;
+                if (this.buffer[5] == 3) {
+                    length = this.buffer[6] + 5;
+                }
+                else if (this.buffer[5] == 5) {
+                    length = 8;
+                }
 
                 if (this.buffer.length < length + 4) {
                     break; // 等待更多数据
@@ -86,7 +93,11 @@ class DeviceConnection {
                 if (idx > -1) {
                     const { resolve, timeout } = this.queue.splice(idx, 1)[0];
                     clearTimeout(timeout);
+                    console.log('found dev context');
+
                     resolve(command_data);
+                    console.log('finish dev save');
+
                 }
                 else {
                     this._reconnect();
@@ -205,6 +216,8 @@ async function startDeviceWorker() {
         let devices = await sq.models.device.findAll();
         for (const dev of devices) {
             await processDevice(dev);
+            console.log(`设备 ${dev.name} 处理完成`);
+
         }
     } catch (err) {
         console.error('错误的设备:', err);

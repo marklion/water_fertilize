@@ -345,6 +345,7 @@ module.exports = {
         }
         if (data_finish && action_finish) {
             status = '就绪';
+            await this.record_state_init_values(policy_instance);
         }
         policy_instance.status = status;
         await policy_instance.save();
@@ -388,6 +389,7 @@ module.exports = {
                 id: pid.id,
                 data_source_name: pid.policy_data_source.name,
                 value: data_items[0].value,
+                init_value: pid.value,
             });
         }
         for (let pia of pias) {
@@ -406,7 +408,7 @@ module.exports = {
             actions: actions,
         }
     },
-    get_value_by_pi_and_pid:async function(pi_id, pds_id) {
+    get_value_by_pi_and_pds:async function(pi_id, pds_id) {
         let ret = 0;
         let sq = db_opt.get_sq();
         let pi = await sq.models.policy_instance.findByPk(pi_id);
@@ -466,7 +468,7 @@ module.exports = {
 
         async function handleValueCompare(condition) {
             // 获取左侧值
-            const leftValue = await module.exports.get_value_by_pi_and_pid(
+            const leftValue = await module.exports.get_value_by_pi_and_pds(
                 policyInstance.id,
                 condition.left_pid
             );
@@ -476,7 +478,7 @@ module.exports = {
             if (condition.hasOwnProperty('right_value')) {
                 rightValue = condition.right_value;
             } else if (condition.right_pid) {
-                rightValue = await module.exports.get_value_by_pi_and_pid(
+                rightValue = await module.exports.get_value_by_pi_and_pds(
                     policyInstance.id,
                     condition.right_pid
                 );
@@ -491,7 +493,7 @@ module.exports = {
             const duration = await module.exports.get_continue_sec(policyInstance.id);
             return compareValues(duration, condition.threshold, condition.operator);
         }
- 
+
         function compareValues(left, right, operator) {
             const ops = {
                 '>': (a, b) => a > b,
@@ -508,6 +510,25 @@ module.exports = {
         }
 
         return await evaluateCondition(conditionJson);
-    }
-    
+    },
+    record_state_init_values:async function(pi) {
+        let sq = db_opt.get_sq();
+        let pids = await pi.getPolicy_instance_data({
+            include: [{ model: sq.models.policy_data_source }],
+        });
+        for (let pid of pids) {
+            pid.value = await this.get_value_by_pi_and_pds(pi.id, pid.policy_data_source.id);
+            await pid.save();
+        }
+    },
+    get_state_value_offset:async function(pi_id, pds_id) {
+        let sq = db_opt.get_sq();
+        let pi = await sq.models.policy_instance.findByPk(pi_id);
+        let pids = await pi.getPolicy_instance_data({
+            where: { policyDataSourceId: pds_id },
+        });
+        let orig_value = pids[0] ? pids[0].value : 0;
+        let now_value = await this.get_value_by_pi_and_pds(pi_id, pds_id);
+        return now_value - orig_value;
+    },
 };

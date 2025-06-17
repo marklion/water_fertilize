@@ -42,7 +42,10 @@
                                 <template slot-scope="scope">
                                     <span v-for="single_data in scope.row.data" :key="single_data.id">
                                         <el-tag size="mini" type="primary">
-                                            {{ single_data.data_source_name }}: {{ single_data.value }}
+                                            {{ single_data.data_source_name }}当前值: {{ single_data.value }}
+                                        </el-tag>
+                                        <el-tag size="mini" type="warning">
+                                            {{ single_data.data_source_name }}初始值: {{ single_data.init_value }}
                                         </el-tag>
                                     </span>
                                 </template>

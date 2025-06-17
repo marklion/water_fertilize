@@ -148,11 +148,12 @@ let db_opt = {
             status:{type: DataTypes.STRING, defaultValue: '待完善'},
             state_refresh_time:{type: DataTypes.STRING},
         },
-        policy_instance_data:{
-            id:{type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true},
+        policy_instance_data: {
+            id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+            value: { type: DataTypes.DECIMAL(22, 4), defaultValue: 0, get: getDecimalValue('value') },
         },
-        policy_instance_action:{
-            id:{type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true},
+        policy_instance_action: {
+            id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
         },
     },
     make_associate: function (_sq) {
@@ -195,18 +196,18 @@ let db_opt = {
 
         _sq.models.policy_state_node.belongsTo(_sq.models.policy_template);
         _sq.models.policy_template.hasMany(_sq.models.policy_state_node);
-        _sq.models.policy_state_action.belongsTo(_sq.models.policy_state_node, {as:'enter_state', foreignKey: 'enterStateId'});
-        _sq.models.policy_state_action.belongsTo(_sq.models.policy_state_node, {as:'do_state', foreignKey: 'doStateId'});
-        _sq.models.policy_state_action.belongsTo(_sq.models.policy_state_node, {as:'exit_state', foreignKey: 'exitStateId'});
-        _sq.models.policy_state_node.hasMany(_sq.models.policy_state_action, {as:'enter_actions', foreignKey: 'enterStateId'});
-        _sq.models.policy_state_node.hasMany(_sq.models.policy_state_action, {as:'do_actions', foreignKey: 'doStateId'});
-        _sq.models.policy_state_node.hasMany(_sq.models.policy_state_action, {as:'exit_actions', foreignKey: 'exitStateId'});
+        _sq.models.policy_state_action.belongsTo(_sq.models.policy_state_node, { as: 'enter_state', foreignKey: 'enterStateId' });
+        _sq.models.policy_state_action.belongsTo(_sq.models.policy_state_node, { as: 'do_state', foreignKey: 'doStateId' });
+        _sq.models.policy_state_action.belongsTo(_sq.models.policy_state_node, { as: 'exit_state', foreignKey: 'exitStateId' });
+        _sq.models.policy_state_node.hasMany(_sq.models.policy_state_action, { as: 'enter_actions', foreignKey: 'enterStateId' });
+        _sq.models.policy_state_node.hasMany(_sq.models.policy_state_action, { as: 'do_actions', foreignKey: 'doStateId' });
+        _sq.models.policy_state_node.hasMany(_sq.models.policy_state_action, { as: 'exit_actions', foreignKey: 'exitStateId' });
         _sq.models.policy_state_action.belongsTo(_sq.models.policy_action_node);
         _sq.models.policy_action_node.hasMany(_sq.models.policy_state_action);
-        _sq.models.policy_state_transition.belongsTo(_sq.models.policy_state_node, {as: 'from_state', foreignKey: 'fromStateId'});
-        _sq.models.policy_state_node.hasMany(_sq.models.policy_state_transition, {as: 'from_transitions', foreignKey: 'fromStateId'});
-        _sq.models.policy_state_transition.belongsTo(_sq.models.policy_state_node, {as: 'to_state', foreignKey: 'toStateId'});
-        _sq.models.policy_state_node.hasMany(_sq.models.policy_state_transition, {as: 'to_transitions', foreignKey: 'toStateId'});
+        _sq.models.policy_state_transition.belongsTo(_sq.models.policy_state_node, { as: 'from_state', foreignKey: 'fromStateId' });
+        _sq.models.policy_state_node.hasMany(_sq.models.policy_state_transition, { as: 'from_transitions', foreignKey: 'fromStateId' });
+        _sq.models.policy_state_transition.belongsTo(_sq.models.policy_state_node, { as: 'to_state', foreignKey: 'toStateId' });
+        _sq.models.policy_state_node.hasMany(_sq.models.policy_state_transition, { as: 'to_transitions', foreignKey: 'toStateId' });
 
         _sq.models.policy_instance.belongsTo(_sq.models.policy_template);
         _sq.models.policy_template.hasMany(_sq.models.policy_instance);

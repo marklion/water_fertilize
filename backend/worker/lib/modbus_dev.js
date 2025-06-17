@@ -4,7 +4,7 @@ const db_opt = require('../../lib/db_opt')
 function make_req(fn, address, value, slaver_id) {
     let pdu_data = null;
     if (fn == 3) {
-        pdu_data = ModbusPDU.ReadHoldingRegisters.Request.build(address, 1);
+        pdu_data = ModbusPDU.ReadHoldingRegisters.Request.build(address, 2);
     } else if (fn == 5) {
         let coil_value = value == 'f' ? 0xFF00 : 0x0000; // 线圈值为1时，寄存器值为0xFF00，否则为0x0000
         pdu_data = ModbusPDU.WriteSingleCoil.Request.build(address, coil_value);
@@ -26,7 +26,7 @@ function parse_reply(reply, data_type, slaver_id) {
     if (reply_buffer[0] == slaver_id) {
         let data_length = reply_buffer[2];
         if (data_type == 'uint32' && data_length == 4) {
-            ret = reply_buffer.readUInt32LE(3);
+            ret = reply_buffer.readUInt32BE(3);
             console.log(ret.toString(16));
 
         }
@@ -98,18 +98,21 @@ module.exports = {
                 target = element;
             }
         });
-        if (target && target.data_type) {
-            let data = parse_reply(reply, target.data_type, get_slave_id(device));
-            let device_data = await device.getDevice_data({
-                where: {
-                    modbusReadMetumId: target.id,
-                },
-            });
-            device_data[0].value = data;
+        if (target) {
             device.error_info = '';
             await device.save();
-            await device_data[0].save();
+            if (target.data_type) {
+                let data = parse_reply(reply, target.data_type, get_slave_id(device));
+                let device_data = await device.getDevice_data({
+                    where: {
+                        modbusReadMetumId: target.id,
+                    },
+                });
+                device_data[0].value = data;
+                await device_data[0].save();
+            }
         }
+
     },
     error2dev: async function (device, err_msg) {
         device.error_info = err_msg;
