@@ -184,10 +184,12 @@ process.on('uncaughtException', (err) => {
     console.error('An uncaught error occurred!');
     console.error(err.stack);
 });
+let should_exit = false;
 let server = app.listen(parseInt(process.env.PORT), () => console.log('Server running on port ' + process.env.PORT));
 process.on('SIGINT', () => {
     console.log('SIGINT signal received. Closing server...');
     server.close();
+    should_exit = true;
 });
 
 async function worker_loop() {
@@ -195,6 +197,9 @@ async function worker_loop() {
     await policy_worker.trigger_policy_sms();
 }
 function start_worker_loop_after(m_sec) {
+    if (should_exit) {
+        return;
+    }
     setTimeout(async () => {
         await worker_loop();
         start_worker_loop_after(m_sec);

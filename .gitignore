@@ -12,3 +12,6 @@ coverage/
 
 # Mac system files
 .DS_Store
+
+build.zip
+last-build-time.txt

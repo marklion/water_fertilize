@@ -1,6 +1,6 @@
 const path = require('path');
 const webpack = require('webpack');
-
+const fs = require('fs');
 const mode = process.env.NODE_ENV || 'development';
 const isDev = mode === 'development';
 
@@ -30,7 +30,49 @@ module.exports = {
     plugins: [
         new webpack.DefinePlugin({
             'process.env': envVars,
-        }),
+        }), {
+            apply: (compiler) => {
+                compiler.hooks.beforeRun.tapAsync('CheckChangesPlugin', (compilation, callback) => {
+                    const vueFilesDir = path.resolve(__dirname);
+                    const lastBuildFile = path.resolve(__dirname, 'last-build-time.txt');
+                    let lastBuildTime = 0;
+
+                    if (fs.existsSync(lastBuildFile)) {
+                        lastBuildTime = fs.readFileSync(lastBuildFile, 'utf-8');
+                    }
+
+                    let filesChanged = false;
+                    const checkFiles = (dir) => {
+                        const files = fs.readdirSync(dir);
+                        for (let file of files) {
+                            const filePath = path.join(dir, file);
+                            const stat = fs.statSync(filePath);
+
+                            if (stat.isDirectory()) {
+                                checkFiles(filePath);
+                            } else if (stat.mtimeMs > lastBuildTime &&
+                                path.resolve(filePath) != path.resolve(lastBuildFile) &&
+                                !filePath.endsWith('package-lock.json')) {
+                                filesChanged = true;
+                                console.log(filePath);
+                                break;
+                            }
+                        }
+                    };
+
+                    checkFiles(vueFilesDir);
+
+                    if (!filesChanged) {
+                        console.log('No relevant changes detected, skipping build.');
+                        process.exit(0); // Exit the process to skip the build
+                    } else {
+                        fs.writeFileSync(lastBuildFile, Date.now().toString());
+                    }
+
+                    callback();
+                });
+            }
+        }
     ],
     watch: isDev, // 开发模式下启用watch
     watchOptions: {
