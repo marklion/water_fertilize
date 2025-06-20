@@ -366,4 +366,12 @@ module.exports = {
             await this.disconnect_user2role(user.id, element.id);
         }
     },
+    get_admin_company:async function() {
+        let sq = db_opt.get_sq();
+        let admin_company = await sq.models.company.findOne({
+            where: { is_admin: true },
+            order: [['id', 'ASC']],
+        });
+        return admin_company;
+    },
 };

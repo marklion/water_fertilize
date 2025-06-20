@@ -106,6 +106,7 @@ function make_aprd() {
             id: { type: Number, mean: '驱动ID', example: 1 },
             name: { type: String, mean: '驱动名称', example: '驱动A' },
             type_id: { type: Number, mean: '驱动类型ID', example: 1 },
+            made_by_admin: { type: Boolean, mean: '是否由管理员创建', example: true },
             modbus_read_meta: {
                 type: Array,
                 mean: 'Modbus读取元数据列表',
@@ -188,6 +189,7 @@ function make_aprd() {
         policy_template_info: {
             id: { type: Number, mean: '策略模板ID', example: 1 },
             name: { type: String, mean: '策略模板名称', example: '温度控制策略' },
+            made_by_admin: { type: Boolean, mean: '是否由管理员创建', example: true },
             policy_data_sources: {
                 type: Array,
                 mean: '策略数据源列表',

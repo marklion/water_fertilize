@@ -1,5 +1,6 @@
 const moment = require('moment');
 const db_opt = require('./db_opt');
+const rbac_lib = require('./rbac_lib');
 module.exports = {
     add_policy_template: async function (company, name) {
         let exist_record = await company.getPolicy_templates({
@@ -22,13 +23,23 @@ module.exports = {
         let sq = db_opt.get_sq();
         let pageSize = 20;
         let offset = pageNo * pageSize;
+
+        let admin_company = await rbac_lib.get_admin_company();
         let ret = await sq.models.policy_template.findAndCountAll({
-            where: { companyId: company.id },
+            where: {
+                [db_opt.Op.or]: [
+                    { companyId: company.id },
+                    { companyId: admin_company.id }
+                ],
+            },
             limit: pageSize,
             offset: offset,
             order: [['id', 'DESC']],
             distinct: true,
             include: [
+                {
+                    model: sq.models.company,
+                },
                 {
                     model: sq.models.policy_data_source, include: [
                         {
@@ -82,6 +93,9 @@ module.exports = {
                     ]
                 },
             ],
+        });
+        ret.rows.forEach(item=>{
+            item.made_by_admin = item.company.is_admin;
         });
         return {
             count: ret.count,
@@ -208,9 +222,12 @@ module.exports = {
             await exist_record.destroy();
         }
     },
-    add_policy_instance: async function (policy_template, name) {
+    add_policy_instance: async function (policy_template, name, company) {
         let exist_record = await policy_template.getPolicy_instances({
-            where: { name: name },
+            where: {
+                name: name,
+                companyId: company.id
+            },
         });
         if (exist_record.length == 0) {
             let new_record = await policy_template.createPolicy_instance({
@@ -220,6 +237,7 @@ module.exports = {
             if (state_nodes.length > 0) {
                 await new_record.setPolicy_state_node(state_nodes[0]);
             }
+            await new_record.setCompany(company);
         }
     },
     del_policy_instance: async function (pi_id) {
@@ -233,7 +251,11 @@ module.exports = {
         let sq = db_opt.get_sq();
         let pageSize = 20;
         let offset = pageNo * pageSize;
+
         let ret = await sq.models.policy_instance.findAndCountAll({
+            where:{
+                companyId: company.id,
+            },
             distinct: true,
             limit: pageSize,
             offset: offset,
@@ -249,9 +271,6 @@ module.exports = {
                         },
                     ],
                     required: true,
-                    where: {
-                        companyId: company.id
-                    },
                 },
                 {
                     model: sq.models.policy_state_node,
@@ -409,21 +428,20 @@ module.exports = {
             actions: actions,
         }
     },
-    get_value_by_pi_and_pds:async function(pi_id, pds_id) {
+    get_value_by_pi_and_pds: async function (pi_id, pds_id) {
         let ret = 0;
         let sq = db_opt.get_sq();
         let pi = await sq.models.policy_instance.findByPk(pi_id);
         let pds = await sq.models.policy_data_source.findByPk(pds_id, {
-            include:[
-                {model:sq.models.modbus_read_meta}
+            include: [
+                { model: sq.models.modbus_read_meta }
             ]
         });
         let pids = await pds.getPolicy_instance_data({
             where: { policyInstanceId: pi.id },
             include: [{ model: sq.models.device }],
         });
-        if (pids.length == 1)
-        {
+        if (pids.length == 1) {
             let device = pids[0].device;
             let mrm = pds.modbus_read_metum;
             let device_data = await device.getDevice_data({
@@ -433,7 +451,7 @@ module.exports = {
         }
         return ret;
     },
-    get_continue_sec:async function(pi_id) {
+    get_continue_sec: async function (pi_id) {
         let ret = 0;
         let sq = db_opt.get_sq();
         let pi = await sq.models.policy_instance.findByPk(pi_id);
@@ -442,7 +460,7 @@ module.exports = {
         ret = now.diff(last_time, 'seconds');
         return ret;
     },
-    shouldTransition: async function(policyInstance, conditionJson){
+    shouldTransition: async function (policyInstance, conditionJson) {
         async function evaluateCondition(condition) {
             // 处理逻辑组合条件
             if (condition.and) {
@@ -531,7 +549,7 @@ module.exports = {
 
         return await evaluateCondition(JSON.parse(conditionJson));
     },
-    record_state_init_values:async function(pi) {
+    record_state_init_values: async function (pi) {
         let sq = db_opt.get_sq();
         let pids = await pi.getPolicy_instance_data({
             include: [{ model: sq.models.policy_data_source }],
@@ -541,7 +559,7 @@ module.exports = {
             await pid.save();
         }
     },
-    get_state_value_offset:async function(pi_id, pds_id) {
+    get_state_value_offset: async function (pi_id, pds_id) {
         let sq = db_opt.get_sq();
         let pi = await sq.models.policy_instance.findByPk(pi_id);
         let pids = await pi.getPolicy_instance_data({

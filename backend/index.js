@@ -43,6 +43,16 @@ async function init_super_user() {
             online_time: moment().format('YYYY-MM-DD HH:mm:ss'),
         }
     });
+    let admin_company = await sq.models.company.findOrCreate({
+        where:{
+            name:'默认管理公司',
+        },
+        defaults:{
+            name:'默认管理公司',
+            is_admin:true,
+        },
+    });
+    await user_one[0].setCompany(admin_company[0]);
 
     let role = await rbac_lib.add_role('admin', '超级管理员', false, null);
     if (user_one[0] && role) {

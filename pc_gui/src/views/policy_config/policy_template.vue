@@ -12,7 +12,7 @@
                                     {{ single_ds.name}}-{{ single_ds.modbus_read_metum.title }}
                                 </el-tag>
                             </span>
-                            <el-tag type="success" size="mini" @click="prepare_add_data_source(scope.row.id)">+</el-tag>
+                            <el-tag v-if="$should_edit(scope.row)" type="success" size="mini" @click="prepare_add_data_source(scope.row.id)">+</el-tag>
                         </template>
                     </el-table-column>
                     <el-table-column label="动作集">
@@ -22,7 +22,7 @@
                                     {{ single_an.name}}-{{ single_an.modbus_write_relay.action}}
                                 </el-tag>
                             </span>
-                            <el-tag type="success" size="mini" @click="prepare_add_action_node(scope.row.id)">+</el-tag>
+                            <el-tag v-if="$should_edit(scope.row)" type="success" size="mini" @click="prepare_add_action_node(scope.row.id)">+</el-tag>
                         </template>
                     </el-table-column>
                     <el-table-column>
@@ -30,7 +30,7 @@
                             <el-button size="mini" type="success" @click="add_pt">新增</el-button>
                         </template>
                         <template slot-scope="scope">
-                            <el-button size="mini" type="danger" @click="del_pt(scope)">删除</el-button>
+                            <el-button v-if="$should_edit(scope.row)" size="mini" type="danger" @click="del_pt(scope)">删除</el-button>
                             <el-button size="mini" type="primary" @click="open_state_page(scope.row)">展开状态</el-button>
                         </template>
                     </el-table-column>
@@ -38,12 +38,12 @@
             </div>
         </template>
     </page-content>
-    <el-drawer destroy-on-close  :visible.sync="policy_state_draw" direction="rtl" size="70%">
+    <el-drawer destroy-on-close :visible.sync="policy_state_draw" direction="rtl" size="70%">
         <template slot="title">
             <span>状态详情</span>
-            <el-button type="primary" size="small" @click="add_state">新增状态</el-button>
+            <el-button v-if="$should_edit(focus_policy)" type="primary" size="small" @click="add_state">新增状态</el-button>
         </template>
-        <policy-state :action_nodes="focus_policy.policy_action_nodes" :policy_state_nodes="focus_policy.policy_state_nodes" @refresh="refresh"></policy-state>
+        <policy-state :editable="$should_edit(focus_policy)" :action_nodes="focus_policy.policy_action_nodes" :policy_state_nodes="focus_policy.policy_state_nodes" @refresh="refresh"></policy-state>
     </el-drawer>
     <el-dialog title="新增数据源" :visible.sync="add_ds_diag" width="50%">
         <el-form :model="ds_form" ref="ds_form" :rules="ds_form_rules">
@@ -122,7 +122,7 @@ export default {
         };
     },
     methods: {
-        add_state:async function() {
+        add_state: async function () {
             let name = await this.$prompt('请输入状态名称', '新增状态', {
                 confirmButtonText: '确定',
                 cancelButtonText: '取消',
@@ -213,8 +213,12 @@ export default {
                 confirmButtonText: '确定',
                 cancelButtonText: '取消',
             });
+            let pt_name = name.value;
+            if (this.$hasPermission('global')) {
+                pt_name = '预配置-' + pt_name;
+            }
             await this.$send_req('/policy/add_policy_template', {
-                name: name.value,
+                name: pt_name,
             });
             this.refresh();
         },

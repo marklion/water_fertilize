@@ -5,7 +5,7 @@ Sequelize.useCLS(namespace);
 const mysql = require('mysql2/promise');
 
 function getDecimalValue(fieldName) {
-    return function() {
+    return function () {
         const value = this.getDataValue(fieldName);
         return value === null ? null : parseFloat(value);
     };
@@ -66,94 +66,149 @@ let db_opt = {
     Op: Op,
     model: {
         rbac_user: {
-            id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-            name: { type: DataTypes.STRING },
-            online_token: { type: DataTypes.STRING },
-            online_time: { type: DataTypes.STRING },
-            phone: { type: DataTypes.STRING},
-            password: { type: DataTypes.STRING },
-            fixed: { type: DataTypes.BOOLEAN },
+            define: {
+                id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+                name: { type: DataTypes.STRING },
+                online_token: { type: DataTypes.STRING },
+                online_time: { type: DataTypes.STRING },
+                phone: { type: DataTypes.STRING },
+                password: { type: DataTypes.STRING },
+                fixed: { type: DataTypes.BOOLEAN },
+            },
+            name: '用户',
         },
         rbac_role: {
-            id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-            name: { type: DataTypes.STRING },
-            description: { type: DataTypes.STRING },
-            is_readonly: { type: DataTypes.BOOLEAN, defaultValue: false },
+            define: {
+                id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+                name: { type: DataTypes.STRING },
+                description: { type: DataTypes.STRING },
+                is_readonly: { type: DataTypes.BOOLEAN, defaultValue: false },
+            },
+            name: '角色',
         },
         rbac_module: {
-            id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-            name: { type: DataTypes.STRING, unique: true },
-            description: { type: DataTypes.STRING },
+            define: {
+                id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+                name: { type: DataTypes.STRING, unique: true },
+                description: { type: DataTypes.STRING },
+            },
+            name: '模块',
         },
         company: {
-            id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-            name: { type: DataTypes.STRING },
+            define: {
+                id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+                name: { type: DataTypes.STRING },
+                is_admin: { type: DataTypes.BOOLEAN, defaultValue: false },
+            },
+            name: '公司',
         },
-        driver:{
-            id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-            name:{ type: DataTypes.STRING},
-            type_id:{type: DataTypes.INTEGER, defaultValue: 1},
+        driver: {
+            define: {
+                id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+                name: { type: DataTypes.STRING },
+                type_id: { type: DataTypes.INTEGER, defaultValue: 1 },
+            },
+            name: '驱动',
         },
-        modbus_read_meta:{
-            id:{ type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-            title:{ type: DataTypes.STRING},
-            reg_address:{ type: DataTypes.INTEGER},
-            data_type:{ type: DataTypes.STRING},
+        modbus_read_meta: {
+            define: {
+                id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+                title: { type: DataTypes.STRING },
+                reg_address: { type: DataTypes.INTEGER },
+                data_type: { type: DataTypes.STRING },
+            },
+            name: 'Modbus读取寄存器配置',
         },
-        device:{
-            id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-            name: { type: DataTypes.STRING },
-            connection_key: { type: DataTypes.TEXT },
-            error_info:{ type: DataTypes.TEXT },
+        device: {
+            define: {
+                id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+                name: { type: DataTypes.STRING },
+                connection_key: { type: DataTypes.TEXT },
+                error_info: { type: DataTypes.TEXT },
+            },
+            name: '设备',
         },
-        device_data:{
-            id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-            value:{ type: DataTypes.DECIMAL(22, 4), defaultValue:0, get:getDecimalValue('value')},
+        device_data: {
+            define: {
+                id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+                value: { type: DataTypes.DECIMAL(22, 4), defaultValue: 0, get: getDecimalValue('value') },
+            },
+            name: '设备读数',
         },
-        modbus_write_relay:{
-            id:{ type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-            action:{ type: DataTypes.STRING},
-            reg_address:{ type: DataTypes.INTEGER},
-            value:{ type: DataTypes.TEXT},
+        modbus_write_relay: {
+            define: {
+                id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+                action: { type: DataTypes.STRING },
+                reg_address: { type: DataTypes.INTEGER },
+                value: { type: DataTypes.TEXT },
+            },
+            name: 'Modbus写入继电器配置',
         },
-        policy_template:{
-            id:{type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true},
-            name:{type: DataTypes.STRING},
+        policy_template: {
+            define: {
+                id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+                name: { type: DataTypes.STRING },
+            },
+            name: '策略模板',
         },
-        policy_data_source:{
-            id:{type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true},
-            name:{type: DataTypes.STRING},
+        policy_data_source: {
+            define: {
+                id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+                name: { type: DataTypes.STRING },
+            },
+            name: '策略数据源',
         },
-        policy_action_node:{
-            id:{type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true},
-            name:{type: DataTypes.STRING},
+        policy_action_node: {
+            define: {
+                id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+                name: { type: DataTypes.STRING },
+            },
+            name: '策略动作',
         },
-        policy_state_node:{
-            id:{type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true},
-            name:{type: DataTypes.STRING},
+        policy_state_node: {
+            define: {
+                id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+                name: { type: DataTypes.STRING },
+            },
+            name: '策略状态节点',
         },
-        policy_state_action:{
-            id:{type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true},
-            priority:{type: DataTypes.INTEGER, defaultValue: 0},
+        policy_state_action: {
+            define: {
+                id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+                priority: { type: DataTypes.INTEGER, defaultValue: 0 },
+            },
+            name: '状态执行动作',
         },
-        policy_state_transition:{
-            id:{type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true},
-            name:{type: DataTypes.STRING},
-            compare_condition:{type: DataTypes.STRING},
-            priority:{type: DataTypes.INTEGER, defaultValue: 0},
+        policy_state_transition: {
+            define: {
+                id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+                name: { type: DataTypes.STRING },
+                compare_condition: { type: DataTypes.STRING },
+                priority: { type: DataTypes.INTEGER, defaultValue: 0 },
+            },
+            name: '状态转移条件',
         },
-        policy_instance:{
-            id:{type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true},
-            name:{type: DataTypes.STRING},
-            status:{type: DataTypes.STRING, defaultValue: '待完善'},
-            state_refresh_time:{type: DataTypes.STRING},
+        policy_instance: {
+            define: {
+                id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+                name: { type: DataTypes.STRING },
+                status: { type: DataTypes.STRING, defaultValue: '待完善' },
+                state_refresh_time: { type: DataTypes.STRING },
+            },
+            name: '策略实体',
         },
         policy_instance_data: {
-            id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-            value: { type: DataTypes.DECIMAL(22, 4), defaultValue: 0, get: getDecimalValue('value') },
+            define: {
+                id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+                value: { type: DataTypes.DECIMAL(22, 4), defaultValue: 0, get: getDecimalValue('value') },
+            },
+            name: '设备和策略数据源的关联',
         },
         policy_instance_action: {
-            id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+            define: {
+                id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+            },
+            name: '设备和策略动作的关联',
         },
     },
     make_associate: function (_sq) {
@@ -182,6 +237,8 @@ let db_opt = {
         _sq.models.driver.hasMany(_sq.models.modbus_write_relay);
         _sq.models.device.belongsTo(_sq.models.modbus_write_relay);
         _sq.models.modbus_write_relay.hasMany(_sq.models.device);
+        _sq.models.device.belongsTo(_sq.models.company);
+        _sq.models.company.hasMany(_sq.models.device);
 
         _sq.models.policy_template.belongsTo(_sq.models.company);
         _sq.models.company.hasMany(_sq.models.policy_template);
@@ -213,6 +270,8 @@ let db_opt = {
         _sq.models.policy_template.hasMany(_sq.models.policy_instance);
         _sq.models.policy_instance.belongsTo(_sq.models.policy_state_node);
         _sq.models.policy_state_node.hasMany(_sq.models.policy_instance);
+        _sq.models.policy_instance.belongsTo(_sq.models.company);
+        _sq.models.company.hasMany(_sq.models.policy_instance);
         _sq.models.policy_instance_data.belongsTo(_sq.models.policy_instance);
         _sq.models.policy_instance.hasMany(_sq.models.policy_instance_data);
         _sq.models.policy_instance_action.belongsTo(_sq.models.policy_instance);
@@ -226,13 +285,36 @@ let db_opt = {
         _sq.models.policy_instance_action.belongsTo(_sq.models.device);
         _sq.models.device.hasMany(_sq.models.policy_instance_action);
     },
+    add_del_hook: function (sq, model_name) {
+        sq.models[model_name].addHook('beforeDestroy', async (instance, options) => {
+            let has_many_rels = Object.values(sq.models[model_name].associations).filter(assoc => {
+                return assoc.associationType === 'HasMany' && assoc.source.name === model_name;
+            });
+            for (let assoc of has_many_rels) {
+                const children = await assoc.target.count({
+                    where: {
+                        [assoc.foreignKey]: instance.id,
+                    },
+                    transaction: options.transaction
+                });
+                if (children > 0) {
+                    throw {
+                        err_msg: `无法删除${this.model[model_name].name}，请先删除相关联的${this.model[assoc.target.name].name}记录。`,
+                    };
+                }
+            }
+        });
+    },
     install: async function () {
         await ensureDatabaseExists();
         let sq = this.get_sq();
         Object.keys(this.model).forEach((key) => {
-            sq.define(key, this.model[key], { paranoid: true });
+            sq.define(key, this.model[key].define, { paranoid: true });
         });
         this.make_associate(sq);
+        Object.keys(this.model).forEach((key) => {
+            this.add_del_hook(sq, key);
+        });
         await sq.sync({ alter: { drop: false } });
         g_sq = sq;
     },

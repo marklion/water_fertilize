@@ -352,6 +352,8 @@ module.exports = {
             func: async function (body, token) {
                 let company = await rbac_lib.get_company_by_token(token);
                 let sq = db_opt.get_sq();
+
+                let admin_company = await rbac_lib.get_admin_company();
                 let ret = await sq.models.modbus_read_meta.findAndCountAll({
                     distinct: true,
                     offset: body.pageNo * 20,
@@ -360,7 +362,12 @@ module.exports = {
                     include: [
                         {
                             model: sq.models.driver,
-                            where: { companyId: company.id },
+                            where: {
+                                [db_opt.Op.or]: [
+                                    { companyId: company.id },
+                                    { companyId: admin_company.id }
+                                ],
+                            },
                             required: true,
                         }
                     ],
@@ -393,6 +400,8 @@ module.exports = {
             func: async function (body, token) {
                 let company = await rbac_lib.get_company_by_token(token);
                 let sq = db_opt.get_sq();
+
+                let admin_company = await rbac_lib.get_admin_company();
                 let ret = await sq.models.modbus_write_relay.findAndCountAll({
                     distinct: true,
                     offset: body.pageNo * 20,
@@ -401,7 +410,12 @@ module.exports = {
                     include: [
                         {
                             model: sq.models.driver,
-                            where: { companyId: company.id },
+                            where: {
+                                [db_opt.Op.or]: [
+                                    { companyId: company.id },
+                                    { companyId: admin_company.id }
+                                ],
+                            },
                             required: true,
                         }
                     ],
@@ -429,9 +443,12 @@ module.exports = {
             },
             func: async function (body, token) {
                 let company = await rbac_lib.get_company_by_token(token);
+                let admin_company = await rbac_lib.get_admin_company();
                 let pt = await db_opt.get_sq().models.policy_template.findByPk(body.pt_id);
-                if (pt && company && await company.hasPolicy_template(pt)) {
-                    await policy_lib.add_policy_instance(pt, body.name);
+                if (pt && ((company && await company.hasPolicy_template(pt)) || (
+                    admin_company && await admin_company.hasPolicy_template(pt)
+                ))) {
+                    await policy_lib.add_policy_instance(pt, body.name, company);
                 }
                 return { result: true };
             }
@@ -449,15 +466,14 @@ module.exports = {
             },
             func: async function (body, token) {
                 let company = await rbac_lib.get_company_by_token(token);
-                let pi = await db_opt.get_sq().models.policy_instance.findByPk(body.pi_id, {
-                    include: [{ model: db_opt.get_sq().models.policy_template }]
-                });
-                if (pi && company && await company.hasPolicy_template(pi.policy_template)) {
+                let pi = await db_opt.get_sq().models.policy_instance.findByPk(body.pi_id);
+                if (pi && company && await company.hasPolicy_instance(pi)) {
                     await policy_lib.del_policy_instance(body.pi_id);
                 }
                 else {
                     throw { err_msg: '没有权限删除策略实例' };
                 }
+
                 return { result: true };
             }
         },
@@ -495,12 +511,14 @@ module.exports = {
             },
             func: async function (body, token) {
                 let company = await rbac_lib.get_company_by_token(token);
+                let admin_company = await rbac_lib.get_admin_company();
                 let pi = await db_opt.get_sq().models.policy_instance.findByPk(body.pi_id, {
                     include: [{ model: db_opt.get_sq().models.policy_template }]
                 });
                 let ds = await db_opt.get_sq().models.policy_data_source.findByPk(body.ds_id);
                 let device = await db_opt.get_sq().models.device.findByPk(body.device_id);
-                if (pi && company && ds && device && await company.hasPolicy_template(pi.policy_template)) {
+                if (pi && ds && device && (await company.hasPolicy_template(pi.policy_template) ||
+                    await admin_company.hasPolicy_template(pi.policy_template))) {
                     await policy_lib.bind_device_data_source(device, ds, pi);
                     await policy_lib.update_policy_instance_status(pi);
                 }
@@ -523,13 +541,16 @@ module.exports = {
             },
             func: async function (body, token) {
                 let company = await rbac_lib.get_company_by_token(token);
+                let admin_company = await rbac_lib.get_admin_company();
                 let pid = await db_opt.get_sq().models.policy_instance_data.findByPk(body.pid_id, {
                     include: [{
                         model: db_opt.get_sq().models.policy_instance, include: [
                             { model: db_opt.get_sq().models.policy_template }]
                     }]
                 });
-                if (pid && company && await company.hasPolicy_template(pid.policy_instance.policy_template)) {
+                if (pid && (await company.hasPolicy_template(pid.policy_instance.policy_template) ||
+                    await admin_company.hasPolicy_template(pid.policy_instance.policy_template)
+                )) {
                     await policy_lib.unbind_device_data_source(body.pid_id);
                     await policy_lib.update_policy_instance_status(pid.policy_instance);
                 }
@@ -551,12 +572,14 @@ module.exports = {
             },
             func: async function (body, token) {
                 let company = await rbac_lib.get_company_by_token(token);
+                let admin_company = await rbac_lib.get_admin_company();
                 let pi = await db_opt.get_sq().models.policy_instance.findByPk(body.pi_id, {
                     include: [{ model: db_opt.get_sq().models.policy_template }]
                 });
                 let an = await db_opt.get_sq().models.policy_action_node.findByPk(body.an_id);
                 let device = await db_opt.get_sq().models.device.findByPk(body.device_id);
-                if (pi && company && an && device && await company.hasPolicy_template(pi.policy_template)) {
+                if (pi && an && device && (await company.hasPolicy_template(pi.policy_template) ||
+                    await admin_company.hasPolicy_template(pi.policy_template))) {
                     await policy_lib.bind_device_action_node(device, an, pi);
                     await policy_lib.update_policy_instance_status(pi);
                 }
@@ -579,13 +602,15 @@ module.exports = {
             },
             func: async function (body, token) {
                 let company = await rbac_lib.get_company_by_token(token);
+                let admin_company = await rbac_lib.get_admin_company();
                 let pia = await db_opt.get_sq().models.policy_instance_action.findByPk(body.pia_id, {
                     include: [{
                         model: db_opt.get_sq().models.policy_instance, include: [
                             { model: db_opt.get_sq().models.policy_template }]
                     }]
                 });
-                if (pia && company && await company.hasPolicy_template(pia.policy_instance.policy_template)) {
+                if (pia && (await company.hasPolicy_template(pia.policy_instance.policy_template) ||
+                    await admin_company.hasPolicy_template(pia.policy_instance.policy_template))) {
                     await policy_lib.unbind_device_action_node(body.pia_id);
                     await policy_lib.update_policy_instance_status(pia.policy_instance);
                 }

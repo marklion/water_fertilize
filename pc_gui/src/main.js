@@ -63,6 +63,17 @@ Vue.prototype.$download_file = function (url, fileName) {
   link.click();
   document.body.removeChild(link);
 }
+Vue.prototype.$should_edit = function (res) {
+  let ret = false;
+  if (Vue.prototype.$hasPermission('global')) {
+    ret = true;
+  }
+  else if (!res.made_by_admin) {
+    ret = true;
+  }
+
+  return ret;
+}
 Vue.prototype.$quik_date_option = {
   shortcuts: [{
     text: '最近一周',
