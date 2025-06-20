@@ -8,7 +8,7 @@
                     <el-table-column label="数据源">
                         <template slot-scope="scope">
                             <span v-for="single_ds in  scope.row.policy_data_sources" :key="single_ds.id">
-                                <el-tag type="warning" size="mini" closable @close="del_data_source(single_ds)">
+                                <el-tag type="warning" size="mini" :closable="$should_edit(scope.row)" @close="del_data_source(single_ds)">
                                     {{ single_ds.name}}-{{ single_ds.modbus_read_metum.title }}
                                 </el-tag>
                             </span>
@@ -18,11 +18,21 @@
                     <el-table-column label="动作集">
                         <template slot-scope="scope">
                             <span v-for="single_an in  scope.row.policy_action_nodes" :key="single_an.id">
-                                <el-tag type="warning" size="mini" closable @close="del_action_node(single_an)">
+                                <el-tag type="warning" size="mini" :closable="$should_edit(scope.row)" @close="del_action_node(single_an)">
                                     {{ single_an.name}}-{{ single_an.modbus_write_relay.action}}
                                 </el-tag>
                             </span>
                             <el-tag v-if="$should_edit(scope.row)" type="success" size="mini" @click="prepare_add_action_node(scope.row.id)">+</el-tag>
+                        </template>
+                    </el-table-column>
+                    <el-table-column label="变量">
+                        <template slot-scope="scope">
+                            <span v-for="single_var in  scope.row.policy_variables" :key="single_var.id">
+                                <el-tag type="warning" size="mini" :closable="$should_edit(scope.row)" @close="del_variable(single_var)">
+                                    {{ single_var.name}}
+                                </el-tag>
+                            </span>
+                            <el-tag v-if="$should_edit(scope.row)" type="success" size="mini" @click="add_variable(scope.row.id)">+</el-tag>
                         </template>
                     </el-table-column>
                     <el-table-column>
@@ -122,6 +132,32 @@ export default {
         };
     },
     methods: {
+        del_variable: async function (single_var) {
+            let name = single_var.name;
+            await this.$confirm(`是否删除变量 ${name}？`, '提示', {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+            });
+            await this.$send_req('/policy/del_policy_variable', {
+                pv_id: single_var.id,
+            });
+            this.refresh();
+        },
+        add_variable: async function (pt_id) {
+            let name = await this.$prompt('请输入变量名称', '新增变量', {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+            });
+            if (name.value === '') {
+                this.$message.error('变量名称不能为空');
+                return;
+            }
+            await this.$send_req('/policy/add_policy_variable', {
+                pt_id: pt_id,
+                name: name.value,
+            });
+            this.refresh();
+        },
         add_state: async function () {
             let name = await this.$prompt('请输入状态名称', '新增状态', {
                 confirmButtonText: '确定',

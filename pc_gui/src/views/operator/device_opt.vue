@@ -1,7 +1,7 @@
 <template>
 <div class="device_opt_show">
     <el-row :gutter="20">
-        <el-col :span="12">
+        <el-col :span="8">
             <page-content ref="devices" enable body_key="devices" req_url="/operator/get_devices">
                 <template v-slot:default="slotProps">
                     <div style="height:80vh">
@@ -30,8 +30,8 @@
                 </template>
             </page-content>
         </el-col>
-        <el-col :span="12">
-            <page-content body_key="policy_instances" enable req_url="/operator/get_runtime_policy_instances">
+        <el-col :span="16">
+            <page-content ref="policy_instances" body_key="policy_instances" enable req_url="/operator/get_runtime_policy_instances">
                 <template v-slot:default="slotProps">
                     <div style="height:80vh">
                         <el-table :data="slotProps.content" style="width: 100%">
@@ -50,7 +50,17 @@
                                     </span>
                                 </template>
                             </el-table-column>
-                            <el-table-column>
+                            <el-table-column label="变量">
+                                <template slot-scope="scope">
+                                    <el-descriptions :column="1">
+                                        <el-descriptions-item v-for="single_piv in scope.row.variables" :key="single_piv.id" :label="single_piv.name">
+                                            {{ single_piv.value }}
+                                            <el-button type="text" @click="change_variable(single_piv)">修改</el-button>
+                                        </el-descriptions-item>
+                                    </el-descriptions>
+                                </template>
+                            </el-table-column>
+                            <el-table-column label="状态">
                                 <template slot-scope="scope">
                                     <span v-for="single_action in scope.row.actions" :key="single_action.id">
                                         <el-tag size="mini" :type="single_action.do?'success':'danger'">
@@ -104,8 +114,21 @@ export default {
         };
     },
     methods: {
+        change_variable: async function (single_var) {
+            let new_value = await this.$prompt(`请输入变量${single_var.name}的新值`, '修改变量', {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+                inputPlaceholder: `当前值: ${single_var.value},不填写就是空`,
+            });
+            await this.$send_req('/operator/set_policy_variable', {
+                piv_id: single_var.id,
+                value: new_value.value,
+            });
+            this.refresh();
+        },
         refresh: function () {
             this.$refs.devices.refresh();
+            this.$refs.policy_instances.refresh();
         },
         prepare_set_action(device) {
             this.focus_device = device;

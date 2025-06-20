@@ -107,5 +107,39 @@ module.exports = {
                 };
             },
         },
+        set_policy_variable: {
+            name: '设置策略变量',
+            description: '设置策略变量',
+            is_write: true,
+            is_get_api: false,
+            params: {
+                piv_id:{ type: Number, have_to: true, mean: '策略变量ID', example: 1 },
+                value: { type: String, have_to: true, mean: '变量值', example: 'new_value' },
+            },
+            result: {
+                result: { type: Boolean, mean: '操作结果', example: true },
+            },
+            func: async function (body, token) {
+                let ret = { result: true };
+                let sq = db_opt.get_sq();
+                let company = await rbac_lib.get_company_by_token(token);
+                let piv = await sq.models.policy_instance_variable.findByPk(body.piv_id, {
+                    include: [{
+                        model: sq.models.policy_instance,
+                        require: true,
+                    }],
+                });
+                if (piv && piv.policy_instance && piv.policy_instance.companyId == company.id) {
+                    piv.value = body.value;
+                    await piv.save();
+                }
+                else {
+                    throw {
+                        err_msg: '没有权限设置变量',
+                    }
+                }
+                return ret;
+            },
+        },
     }
 }
