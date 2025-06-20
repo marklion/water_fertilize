@@ -210,6 +210,20 @@ let db_opt = {
             },
             name: '设备和策略动作的关联',
         },
+        policy_variable:{
+            define:{
+                id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+                name:{ type: DataTypes.STRING },
+            },
+            name: '策略变量',
+        },
+        policy_instance_variable: {
+            define:{
+                id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+                value:{type: DataTypes.STRING},
+            },
+            name: '策略实体变量',
+        },
     },
     make_associate: function (_sq) {
         _sq.models.rbac_user.belongsToMany(_sq.models.rbac_role, { through: 'rbac_user_role' });
@@ -284,6 +298,13 @@ let db_opt = {
         _sq.models.device.hasMany(_sq.models.policy_instance_data);
         _sq.models.policy_instance_action.belongsTo(_sq.models.device);
         _sq.models.device.hasMany(_sq.models.policy_instance_action);
+
+        _sq.models.policy_variable.belongsTo(_sq.models.policy_template);
+        _sq.models.policy_template.hasMany(_sq.models.policy_variable);
+        _sq.models.policy_instance_variable.belongsTo(_sq.models.policy_instance);
+        _sq.models.policy_instance.hasMany(_sq.models.policy_instance_variable);
+        _sq.models.policy_instance_variable.belongsTo(_sq.models.policy_variable);
+        _sq.models.policy_variable.hasMany(_sq.models.policy_instance_variable);
     },
     add_del_hook: function (sq, model_name) {
         sq.models[model_name].addHook('beforeDestroy', async (instance, options) => {
@@ -299,7 +320,7 @@ let db_opt = {
                 });
                 if (children > 0) {
                     throw {
-                        err_msg: `无法删除${this.model[model_name].name}，请先删除相关联的${this.model[assoc.target.name].name}记录。`,
+                        err_msg: `无法删除${this.model[model_name].name}，请先删除相关联的${this.model[assoc.target.name].name}。`,
                     };
                 }
             }

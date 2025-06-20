@@ -116,6 +116,10 @@ module.exports = {
         let sq = db_opt.get_sq();
         let device = await sq.models.device.findByPk(device_id);
         if (device) {
+            let device_data = await device.getDevice_data();
+            for (let single_dd of device_data) {
+                await single_dd.destroy();
+            }
             await device.destroy();
         }
     },

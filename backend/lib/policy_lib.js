@@ -41,6 +41,9 @@ module.exports = {
                     model: sq.models.company,
                 },
                 {
+                    model:sq.models.policy_variable,
+                },
+                {
                     model: sq.models.policy_data_source, include: [
                         {
                             model: sq.models.modbus_read_meta, include: [
@@ -223,27 +226,42 @@ module.exports = {
         }
     },
     add_policy_instance: async function (policy_template, name, company) {
-        let exist_record = await policy_template.getPolicy_instances({
-            where: {
-                name: name,
-                companyId: company.id
-            },
-        });
-        if (exist_record.length == 0) {
-            let new_record = await policy_template.createPolicy_instance({
-                name: name,
+        let state_nodes = await policy_template.getPolicy_state_nodes();
+        if (state_nodes.length > 0) {
+            let exist_record = await policy_template.getPolicy_instances({
+                where: {
+                    name: name,
+                    companyId: company.id
+                },
             });
-            let state_nodes = await policy_template.getPolicy_state_nodes();
-            if (state_nodes.length > 0) {
+            if (exist_record.length == 0) {
+                let new_record = await policy_template.createPolicy_instance({
+                    name: name,
+                });
                 await new_record.setPolicy_state_node(state_nodes[0]);
+                await new_record.setCompany(company);
+                let pvs = await policy_template.getPolicy_variables();
+                for (let pv of pvs) {
+                    let new_piv = await new_record.createPolicy_instance_variable({
+                    });
+                    await new_piv.setPolicy_variable(pv);
+                }
             }
-            await new_record.setCompany(company);
+        }
+        else {
+            throw {
+                err_msg: '策略模板必须至少有一个状态节点',
+            }
         }
     },
     del_policy_instance: async function (pi_id) {
         let sq = db_opt.get_sq();
         let exist_record = await sq.models.policy_instance.findByPk(pi_id);
         if (exist_record) {
+            let pivs = await exist_record.getPolicy_instance_variables();
+            for (let piv of pivs) {
+                await piv.destroy();
+            }
             await exist_record.destroy();
         }
     },
@@ -253,7 +271,7 @@ module.exports = {
         let offset = pageNo * pageSize;
 
         let ret = await sq.models.policy_instance.findAndCountAll({
-            where:{
+            where: {
                 companyId: company.id,
             },
             distinct: true,
@@ -287,6 +305,12 @@ module.exports = {
                     include: [
                         { model: sq.models.policy_action_node },
                         { model: sq.models.device }
+                    ],
+                },
+                {
+                    model:sq.models.policy_instance_variable,
+                    include:[
+                        { model: sq.models.policy_variable }
                     ],
                 }
             ],
@@ -397,6 +421,11 @@ module.exports = {
                 }],
             }]
         });
+        let pivs = await pi.getPolicy_instance_variables({
+            include: [{
+                model: sq.models.policy_variable,
+            }],
+        });
         let data = [];
         let actions = [];
         for (let pid of pids) {
@@ -419,6 +448,14 @@ module.exports = {
                 do: pia.device.modbus_write_relay.id == pia.policy_action_node.modbus_write_relay.id,
             });
         }
+        let variables = [];
+        for (let piv of pivs) {
+            variables.push({
+                id: piv.id,
+                name: piv.policy_variable.name,
+                value: piv.value,
+            });
+        }
         return {
             id: pi.id,
             name: pi.name,
@@ -426,6 +463,7 @@ module.exports = {
             state_name: psn.name,
             data: data,
             actions: actions,
+            variables: variables,
         }
     },
     get_value_by_pi_and_pds: async function (pi_id, pds_id) {
@@ -451,15 +489,45 @@ module.exports = {
         }
         return ret;
     },
-    get_continue_sec: async function (pi_id) {
+    get_continue_sec: async function (pi_id, coe) {
         let ret = 0;
         let sq = db_opt.get_sq();
         let pi = await sq.models.policy_instance.findByPk(pi_id);
         let last_time = moment(pi.state_refresh_time);
         let now = moment();
         ret = now.diff(last_time, 'seconds');
-        return ret;
+        return ret * coe;
     },
+    /**
+     * 判断策略实例是否满足条件
+     * @param {Object} policyInstance 策略实例对象
+     * @param {string} conditionJson 条件JSON字符串
+     *      {
+     *          "and": [
+     *              {
+     *                  "left": { "pds_id": 1 },
+     *                  "right": { "constant_value": 10 },
+     *                  "operator": ">"
+     *              },
+     *              {
+     *                "left": { "pv_id": 1 },
+     *                "right": { "offset_pds_id": 2 },
+     *                 "operator": "<"
+     *              },
+     *              {
+     *                  "or": [{
+     *                      "left": { "pds_id": 2 },
+     *                      "right": { "offset_pds_id": 3 },
+     *                      "operator": "<="},{
+     *                      "left": { "duration": 5 },
+     *                      "right": { "constant_value": 30 },
+     *                      "operator": "=="
+     *                  }]
+     *              }
+     *          ],
+     *      }
+     * @returns {Promise<boolean>} 是否满足条件
+     */
     shouldTransition: async function (policyInstance, conditionJson) {
         async function evaluateCondition(condition) {
             // 处理逻辑组合条件
@@ -471,65 +539,31 @@ module.exports = {
                 const results = await Promise.all(condition.or.map(subCond => evaluateCondition(subCond)));
                 return results.some(result => result);
             }
-            // 处理基础条件类型
-            const condType = condition.type;
-            switch (condType) {
-                case 'value_compare':
-                    //常量判断
-                    return handleValueCompare(condition);
-                case 'duration_compare':
-                    //市场判断
-                    return handleDurationCompare(condition);
-                case 'change_compare':
-                    return handleChangeValueCompare(condition);
-                default:
-                    throw new Error(`不支持的类型判断: ${condType}`);
+            return await handleValueCompare(condition);
+        }
+
+        async function get_value_from_condition(condition, position) {
+            let ret = 0;
+            let value_obj = condition[position];
+            if (value_obj.hasOwnProperty('constant_value')) {
+                ret = value_obj.constant_value;
+            } else if (value_obj.hasOwnProperty('pds_id')) {
+                ret = await module.exports.get_value_by_pi_and_pds(policyInstance.id, value_obj.pds_id);
+            } else if (value_obj.hasOwnProperty('offset_pds_id')) {
+                ret = await module.exports.get_state_value_offset(policyInstance.id, value_obj.offset_pds_id);
+            } else if (value_obj.hasOwnProperty('duration')) {
+                ret = await module.exports.get_continue_sec(policyInstance.id, value_obj.duration);
+            } else if (value_obj.hasOwnProperty('pv_id')) {
+                ret = await module.exports.get_policy_instance_variable(policyInstance.id, value_obj.pv_id);
             }
+            return ret;
         }
 
         async function handleValueCompare(condition) {
-            // 获取左侧值
-            const leftValue = await module.exports.get_value_by_pi_and_pds(
-                policyInstance.id,
-                condition.left_pds_id
-            );
+            let left_value = await get_value_from_condition(condition, 'left');
+            let right_value = await get_value_from_condition(condition, 'right');
 
-            let rightValue;
-            // 判断右侧是常量还是其他数据源
-            if (condition.hasOwnProperty('right_value')) {
-                rightValue = condition.right_value;
-            } else if (condition.right_pid) {
-                rightValue = await module.exports.get_value_by_pi_and_pds(
-                    policyInstance.id,
-                    condition.right_psd_id
-                );
-            } else {
-                throw new Error('在比较值的运算中，左右侧的值未指定');
-            }
-
-            return compareValues(leftValue, rightValue, condition.operator);
-        }
-
-        async function handleChangeValueCompare(condition) {
-            // 获取左侧值
-            const leftValue = await module.exports.get_state_value_offset(
-                policyInstance.id,
-                condition.left_pds_id
-            );
-
-            let rightValue;
-            // 判断右侧是常量才进行比较
-            if (condition.hasOwnProperty('right_value')) {
-                rightValue = condition.right_value;
-            } else {
-                throw new Error('在比较值的运算中，左右侧的值未指定');
-            }
-
-            return compareValues(leftValue, rightValue, condition.operator);
-        }
-        async function handleDurationCompare(condition) {
-            const duration = await module.exports.get_continue_sec(policyInstance.id);
-            return compareValues(duration, condition.threshold, condition.operator);
+            return compareValues(left_value,right_value, condition.operator);
         }
 
         function compareValues(left, right, operator) {
@@ -568,5 +602,36 @@ module.exports = {
         let orig_value = pids[0] ? pids[0].value : 0;
         let now_value = await this.get_value_by_pi_and_pds(pi_id, pds_id);
         return now_value - orig_value;
+    },
+    add_policy_variable: async function (pt, name) {
+        let exist_record = await pt.getPolicy_variables({
+            where: { name: name },
+        });
+        if (exist_record.length == 0) {
+            await pt.createPolicy_variable({
+                name: name,
+            });
+        }
+    },
+    del_policy_variable: async function (pv_id) {
+        let sq = db_opt.get_sq();
+        let exist_record = await sq.models.policy_variable.findByPk(pv_id);
+        if (exist_record) {
+            await exist_record.destroy();
+        }
+    },
+    get_policy_instance_variable: async function (pi_id, pv_id) {
+        let ret;
+        let sq = db_opt.get_sq();
+        let pi = await sq.models.policy_instance.findByPk(pi_id);
+        let pv = await sq.models.policy_variable.findByPk(pv_id);
+        let pivs = await pi.getPolicy_instance_variables({
+            where: { policyVariableId: pv.id },
+        });
+        if (pivs.length == 1) {
+            ret = pivs[0].value;;
+        }
+
+        return ret;
     },
 };

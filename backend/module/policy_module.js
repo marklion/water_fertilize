@@ -617,5 +617,54 @@ module.exports = {
                 return { result: true };
             }
         },
+        add_policy_variable:{
+            name:'添加策略变量',
+            description: '添加策略变量',
+            is_write: true,
+            is_get_api: false,
+            params: {
+                pt_id:{ type: Number, have_to: true, mean: '策略模板ID', example: 1 },
+                name: { type: String, have_to: true, mean: '变量名称'}
+            },
+            result:{
+                result: { type: Boolean, mean: '操作结果', example: true },
+            },
+            func:async function(body, token) {
+                let company = await rbac_lib.get_company_by_token(token);
+                let pt = await db_opt.get_sq().models.policy_template.findByPk(body.pt_id);
+                if (pt && company && await company.hasPolicy_template(pt)) {
+                    await policy_lib.add_policy_variable(pt, body.name);
+                }
+                else {
+                    throw { err_msg: '没有权限添加策略变量' };
+                }
+                return { result: true };
+            },
+        },
+        del_policy_variable:{
+            name: '删除策略变量',
+            description: '删除策略变量',
+            is_write: true,
+            is_get_api: false,
+            params: {
+                pv_id: { type: Number, have_to: true, mean: '策略变量ID', example: 1 },
+            },
+            result: {
+                result: { type: Boolean, mean: '操作结果', example: true },
+            },
+            func: async function (body, token) {
+                let company = await rbac_lib.get_company_by_token(token);
+                let pv = await db_opt.get_sq().models.policy_variable.findByPk(body.pv_id, {
+                    include: [{ model: db_opt.get_sq().models.policy_template }]
+                });
+                if (pv && company && await company.hasPolicy_template(pv.policy_template)) {
+                    await policy_lib.del_policy_variable(body.pv_id);
+                }
+                else {
+                    throw { err_msg: '没有权限删除策略变量' };
+                }
+                return { result: true };
+            }
+        },
     },
 }

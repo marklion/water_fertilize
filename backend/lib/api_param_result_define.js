@@ -28,6 +28,10 @@ function make_aprd() {
             explain: policy_action_node_info,
         },
     };
+    let policy_variable_info = {
+        id: { type: Number, mean: '变量ID', example: 1 },
+        name: { type: String, mean: '变量名称', example: '温度阈值' },
+    };
     let policy_data_source_info = {
         id: { type: Number, mean: '数据源ID', example: 1 },
         name: { type: String, mean: '数据源名称', example: '温度传感器' },
@@ -190,6 +194,11 @@ function make_aprd() {
             id: { type: Number, mean: '策略模板ID', example: 1 },
             name: { type: String, mean: '策略模板名称', example: '温度控制策略' },
             made_by_admin: { type: Boolean, mean: '是否由管理员创建', example: true },
+            policy_variables:{
+                type: Array,
+                mean: '策略变量列表',
+                explain: policy_variable_info,
+            },
             policy_data_sources: {
                 type: Array,
                 mean: '策略数据源列表',
@@ -282,6 +291,19 @@ function make_aprd() {
                     },
                 }
             },
+            policy_instance_variables:{
+                type: Array,
+                mean: '策略实例变量列表',
+                explain: {
+                    id: { type: Number, mean: '变量ID', example: 1 },
+                    value: { type: String, mean: '变量值', example: '12' },
+                    policy_variable:{
+                        type: Object,
+                        mean: '策略变量',
+                        explain: policy_variable_info,
+                    },
+                }
+            },
         },
         policy_instance_runtime_info: {
             id: { type: Number, mean: '策略实例运行时ID', example: 1 },
@@ -301,6 +323,15 @@ function make_aprd() {
                     id: { type: Number, mean: '动作ID', example: 1 },
                     action_node_name: { type: String, mean: '动作节点名称', example: '开灯' },
                     do: { type: Boolean, mean: '是否执行', example: true },
+                }
+            },
+            variables:{
+                type: Array,
+                mean: '策略实例变量列表',
+                explain: {
+                    id: { type: Number, mean: '变量ID', example: 1 },
+                    name: { type: String, mean: '变量名称', example: '温度阈值' },
+                    value: { type: String, mean: '变量值', example: '25' },
                 }
             },
         },
