@@ -629,7 +629,7 @@ module.exports = {
             where: { policyVariableId: pv.id },
         });
         if (pivs.length == 1) {
-            ret = pivs[0].value;;
+            ret = pivs[0].value;
         }
 
         return ret;
