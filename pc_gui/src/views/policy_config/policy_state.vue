@@ -9,12 +9,12 @@
             </el-descriptions-item>
             <el-descriptions-item label="持续动作">
                 <span v-for="single_action in single_state.do_actions" :key="single_action.id">
-                    <el-tag closable="editable" @close="del_action(single_action)" size="mini" type="success">{{state_action_show(single_action)}}</el-tag>
+                    <el-tag :closable="editable" @close="del_action(single_action)" size="mini" type="success">{{state_action_show(single_action)}}</el-tag>
                 </span>
             </el-descriptions-item>
             <el-descriptions-item label="离开动作">
                 <span v-for="single_action in single_state.exit_actions" :key="single_action.id">
-                    <el-tag closable="editable" @close="del_action(single_action)" size="mini" type="danger">{{state_action_show(single_action)}}</el-tag>
+                    <el-tag :closable="editable" @close="del_action(single_action)" size="mini" type="danger">{{state_action_show(single_action)}}</el-tag>
                 </span>
             </el-descriptions-item>
             <template slot="extra" v-if="editable">
