@@ -1,4 +1,5 @@
 const db_opt = require('./db_opt');
+const rbac_lib = require('./rbac_lib');
 module.exports = {
     add_driver: async function (name, type_id, company) {
         let exist_record = await company.getDrivers({
@@ -20,16 +21,26 @@ module.exports = {
     },
     get_drivers: async function (company, pageNo) {
         let sq = db_opt.get_sq();
+        let admin_company = await rbac_lib.get_admin_company();
         let ret = await sq.models.driver.findAndCountAll({
-            where: { companyId: company.id },
+            where: {
+                [db_opt.Op.or]: [
+                    { companyId: company.id },
+                    { companyId: admin_company.id }
+                ],
+            },
             offset: pageNo * 20,
             limit: 20,
             order: [['id', 'DESC']],
             include: [
                 { model: sq.models.modbus_read_meta },
-                { model: sq.models.modbus_write_relay }
+                { model: sq.models.modbus_write_relay },
+                {model:sq.models.company}
             ],
             distinct: true,
+        });
+        ret.rows.forEach(item => {
+            item.made_by_admin = item.company.is_admin;
         });
         return {
             drivers: ret.rows,
@@ -74,9 +85,12 @@ module.exports = {
             await relay.destroy();
         }
     },
-    add_device: async function (driver, name, connection_key) {
+    add_device: async function (driver, name, connection_key, company) {
         let exist_record = await driver.getDevices({
-            where: { name: name },
+            where: {
+                name: name,
+                companyId: company.id,
+            },
         });
         if (exist_record.length == 0) {
             let device = await driver.createDevice({
@@ -95,6 +109,7 @@ module.exports = {
             if (relays.length > 0) {
                 await device.setModbus_write_relay(relays[0]);
             }
+            await device.setCompany(company);
         }
     },
     del_device: async function (device_id) {
@@ -107,13 +122,15 @@ module.exports = {
     get_devices: async function (company, pageNo) {
         let sq = db_opt.get_sq();
         let ret = await sq.models.device.findAndCountAll({
+            where: {
+                companyId: company.id,
+            },
             offset: pageNo * 20,
             limit: 20,
             order: [['driverId', 'DESC'], ['id', 'DESC']],
             include: [
                 {
                     model: sq.models.driver,
-                    where: { companyId: company.id },
                     required: true,
                     include: [
                         { model: sq.models.modbus_write_relay },

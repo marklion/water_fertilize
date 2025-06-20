@@ -200,9 +200,10 @@ module.exports = {
             },
             func:async function(body, token) {
                 let company = await rbac_lib.get_company_by_token(token);
+                let admin_company = await rbac_lib.get_admin_company();
                 let driver = await db_opt.get_sq().models.driver.findByPk(body.driver_id);
-                if (company && driver && await company.hasDriver(driver)) {
-                    await driver_lib.add_device(driver, body.name, body.connection_key);
+                if (driver && (await company.hasDriver(driver) || await admin_company.hasDriver(driver))) {
+                    await driver_lib.add_device(driver, body.name, body.connection_key, company);
                 }
                 else
                 {
@@ -221,39 +222,36 @@ module.exports = {
             params:{
                 device_id:{type: Number, have_to:true, mean:'设备ID', example:1},
             },
-            result:{
-                result: {type: Boolean, mean: '操作结果', example: true},
+            result: {
+                result: { type: Boolean, mean: '操作结果', example: true },
             },
-            func:async function(body, token) {
+            func: async function (body, token) {
                 let sq = db_opt.get_sq();
                 let device = await sq.models.device.findByPk(body.device_id);
-                if (device) {
-                    let driver = await device.getDriver();
-                    let company = await rbac_lib.get_company_by_token(token);
-                    if (company && driver && await company.hasDriver(driver)) {
-                        await driver_lib.del_device(device.id);
-                    }
-                    else
-                    {
-                        throw {
-                            err_msg: '没有权限删除设备',
-                        }
+                let company = await rbac_lib.get_company_by_token(token);
+                if (device && company && await company.hasDevice(device)) {
+                    await driver_lib.del_device(device.id);
+                }
+                else {
+
+                    throw {
+                        err_msg: '没有权限删除设备',
                     }
                 }
                 return { result: true };
             }
         },
-        get_devices:{
-            name:'获取设备列表',
+        get_devices: {
+            name: '获取设备列表',
             description: '获取设备列表',
             is_write: false,
             is_get_api: true,
-            params:{
+            params: {
             },
-            result:{
-                devices: {type: Array, mean: '设备列表', explain: api_param_result_define.device_info},
+            result: {
+                devices: { type: Array, mean: '设备列表', explain: api_param_result_define.device_info },
             },
-            func:async function(body, token) {
+            func: async function (body, token) {
                 let company = await rbac_lib.get_company_by_token(token);
                 let ret = await driver_lib.get_devices(company, body.pageNo);
                 return ret;

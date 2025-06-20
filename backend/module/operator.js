@@ -42,13 +42,19 @@ module.exports = {
             func: async function (body, token) {
                 let sq = db_opt.get_sq();
                 let company = await rbac_lib.get_company_by_token(token);
+                let admin_company = await rbac_lib.get_admin_company();
                 let device = await sq.models.device.findByPk(body.device_id, {
                     include: [{
                         model: sq.models.driver,
                     }],
                 });
                 let relay = await sq.models.modbus_write_relay.findByPk(body.relay_id);
-                if (company && device && device.driver && relay && await company.hasDriver(device.driver) && await device.driver.hasModbus_write_relay(relay)) {
+                if (device && device.driver && relay && ((
+                    company && await company.hasDriver(device.driver)) || (
+                        admin_company && await admin_company.hasDriver(device.driver)
+                    )) &&
+                    await device.driver.hasModbus_write_relay(relay)
+                ) {
                     await device.setModbus_write_relay(relay);
                 }
                 else {
@@ -85,10 +91,10 @@ module.exports = {
                     include: [{
                         model: sq.models.policy_template,
                         require: true,
-                        where: { companyId: company.id },
                     }],
                     where: {
                         status: '就绪',
+                        companyId: company.id,
                     },
                 });
                 let policy_instances = [];

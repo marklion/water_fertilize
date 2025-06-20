@@ -217,7 +217,6 @@ async function startDeviceWorker() {
         for (const dev of devices) {
             await processDevice(dev);
             console.log(`设备 ${dev.name} 处理完成`);
-
         }
     } catch (err) {
         console.error('错误的设备:', err);

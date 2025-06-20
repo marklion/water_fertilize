@@ -17,7 +17,7 @@
                                     <el-table-column prop="title" label="标题" />
                                     <el-table-column prop="reg_address" label="寄存器地址" />
                                     <el-table-column prop="data_type" label="数据类型" />
-                                    <el-table-column>
+                                    <el-table-column v-if="$should_edit(scope.row)">
                                         <template slot="header">
                                             <el-button size="mini" type="success" @click="prepare_add_meta(scope.row)">新增</el-button>
                                         </template>
@@ -32,7 +32,7 @@
                                     <el-table-column prop="action" label="动作" />
                                     <el-table-column prop="reg_address" label="寄存器地址" />
                                     <el-table-column prop="value" label="指令值" />
-                                    <el-table-column>
+                                    <el-table-column v-if="$should_edit(scope.row)">
                                         <template slot="header">
                                             <el-button size="mini" type="success" @click="prepare_add_relay(scope.row)">新增</el-button>
                                         </template>
@@ -48,7 +48,7 @@
                         <template slot="header">
                             <el-button size="mini" type="success" @click="add_driver_diag = true">新增</el-button>
                         </template>
-                        <template slot-scope="scope">
+                        <template slot-scope="scope" v-if="$should_edit(scope.row)">
                             <el-button size="mini" type="danger" @click="delete_driver(scope.row)">删除</el-button>
                         </template>
                     </el-table-column>
@@ -171,7 +171,7 @@ export default {
             add_relay_rules: {
                 action: [
                     { required: true, message: '请输入动作', trigger: 'blur' },
-            ],
+                ],
                 reg_address: [
                     { required: true, message: '请输入寄存器地址', trigger: 'blur' },
                     { pattern: /^\d+$/, message: '寄存器地址必须为数字', trigger: 'blur' }
@@ -188,7 +188,7 @@ export default {
         };
     },
     methods: {
-        prepare_add_relay:function(driver) {
+        prepare_add_relay: function (driver) {
             this.relay_form = {
                 action: '',
                 reg_address: '',
@@ -289,8 +289,12 @@ export default {
                 if (!valid) {
                     return;
                 }
+                let driver_name = this.driver_form.name.trim();
+                if (this.$hasPermission('global')) {
+                    driver_name = '预配置-' + driver_name;
+                }
                 await this.$send_req('/resource_management/create_driver', {
-                    name: this.driver_form.name,
+                    name: driver_name,
                     type_id: parseInt(this.driver_form.type_id)
                 });
                 this.add_driver_diag = false;
@@ -318,6 +322,4 @@ export default {
 }
 </script>
 
-<style>
-
-</style>
+<style></style>

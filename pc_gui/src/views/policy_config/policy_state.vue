@@ -4,20 +4,20 @@
         <el-descriptions :title="single_state.name" direction="vertical" :column="3" border>
             <el-descriptions-item label="进入动作">
                 <span v-for="single_action in single_state.enter_actions" :key="single_action.id">
-                    <el-tag closable @close="del_action(single_action)" size="mini" type="primary">{{state_action_show(single_action)}}</el-tag>
+                    <el-tag :closable="editable" @close="del_action(single_action)" size="mini" type="primary">{{state_action_show(single_action)}}</el-tag>
                 </span>
             </el-descriptions-item>
             <el-descriptions-item label="持续动作">
                 <span v-for="single_action in single_state.do_actions" :key="single_action.id">
-                    <el-tag closable @close="del_action(single_action)" size="mini" type="success">{{state_action_show(single_action)}}</el-tag>
+                    <el-tag closable="editable" @close="del_action(single_action)" size="mini" type="success">{{state_action_show(single_action)}}</el-tag>
                 </span>
             </el-descriptions-item>
             <el-descriptions-item label="离开动作">
                 <span v-for="single_action in single_state.exit_actions" :key="single_action.id">
-                    <el-tag closable @close="del_action(single_action)" size="mini" type="danger">{{state_action_show(single_action)}}</el-tag>
+                    <el-tag closable="editable" @close="del_action(single_action)" size="mini" type="danger">{{state_action_show(single_action)}}</el-tag>
                 </span>
             </el-descriptions-item>
-            <template slot="extra">
+            <template slot="extra" v-if="editable">
                 <el-button type="primary" size="mini" @click="prepare_add_action(single_state.id)">添加动作</el-button>
                 <el-button type="danger" size="mini" @click="del_state(single_state)">删除状态</el-button>
             </template>
@@ -31,7 +31,7 @@
                     <span>{{scope.row.to_state.name}}</span>
                 </template>
             </el-table-column>
-            <el-table-column>
+            <el-table-column v-if="editable">
                 <template slot="header">
                     <el-button size="mini" type="success" @click="prepare_add_transition(single_state.id)">新增</el-button>
                 </template>
@@ -99,6 +99,10 @@ export default {
         data_sources: {
             type: Array,
             default: () => [],
+        },
+        editable: {
+            type: Boolean,
+            default: false,
         },
     },
     data: function () {
@@ -246,15 +250,17 @@ export default {
 .policy_state_show {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px; /* 元素间空隙 */
+    gap: 8px;
+    /* 元素间空隙 */
 }
 
 .single_state_show {
     padding: 20px;
     background: #fff;
     border-radius: 12px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.12), 0 1.5px 4px rgba(0,0,0,0.08);
-    margin-bottom: 0; /* 用gap控制间距 */
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), 0 1.5px 4px rgba(0, 0, 0, 0.08);
+    margin-bottom: 0;
+    /* 用gap控制间距 */
     min-width: 380px;
     flex: 1 1 380px;
     transition: box-shadow 0.2s;
@@ -262,7 +268,7 @@ export default {
 }
 
 .single_state_show:hover {
-    box-shadow: 0 8px 24px rgba(0,0,0,0.18), 0 3px 8px rgba(0,0,0,0.10);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18), 0 3px 8px rgba(0, 0, 0, 0.10);
 }
 
 .el-descriptions {
