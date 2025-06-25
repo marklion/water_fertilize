@@ -44,7 +44,6 @@ async function do_variableAssignments(pi, stateNode, actionType) {
         console.error(`执行${actionType}类型变量赋值失败:`, error.message);
     }
 }
-s
 async function evaluateExpression(pi, expression) {
     if (expression.constant_value !== undefined) {
         return Number(expression.constant_value);

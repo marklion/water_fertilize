@@ -87,8 +87,8 @@
             <el-form-item label="优先级" prop="priority">
                 <el-input v-model="variableAssignment_form.priority"></el-input>
             </el-form-item>
-            <el-form-item label="表达式" prop="variable_assignment">
-                <el-input v-model="variableAssignment_form.variable_assignment"></el-input>
+            <el-form-item label="表达式" prop="expression">
+                <el-input v-model="variableAssignment_form.expression"></el-input>
             </el-form-item>
             <el-form-item label="动作类型" prop="action_type">
                 <el-select v-model="variableAssignment_form.action_type" placeholder="请选择动作类型">
@@ -182,7 +182,7 @@ export default {
             variableAssignment_form: {
                 sn_id: 0,
                 priority: 0,
-                variable_assignment: '',
+                expression: '',
                 action_type: null, 
             },
             variableAssignment_rules: {
@@ -291,7 +291,7 @@ export default {
             
             await this.$send_req('/policy/add_variable_assignment_action', {
                 sn_id: parseInt(this.variableAssignment_form.sn_id),
-                value: JSON.parse(this.variableAssignment_form.variable_assignment),
+                expression: JSON.parse(this.variableAssignment_form.variable_assignment),
                 priority: parseInt(this.variableAssignment_form.priority),
                 action_type: this.variableAssignment_form.action_type
             });

@@ -340,7 +340,7 @@ module.exports = {
             is_get_api: false,
             params: {
                 sn_id: { type: Number, have_to: true, mean: '状态节点ID', example: 1 },
-                value: { type: String, have_to: true, mean: '赋值表达式', example: 'json表达式' },
+                expression: { type: String, have_to: true, mean: '赋值表达式', example: 'json表达式' },
                 action_type: { type: String, have_to: true, mean: '动作类型', example: 'enter' }, // enter, do, exit
                 priority: { type: Number, have_to: true, mean: '优先级', example: 1 },
             },
@@ -354,11 +354,11 @@ module.exports = {
                 });
                 if (sn && company && await company.hasPolicy_template(sn.policy_template)) {
                     if (body.action_type === 'enterAssignment') {
-                        await policy_lib.enter_variable_assignment(sn, body.value, body.priority);
+                        await policy_lib.enter_variable_assignment(sn, body.expression, body.priority);
                     } else if (body.action_type === 'doAssignment') {
-                        await policy_lib.do_variable_assignment(sn, body.value, body.priority);
+                        await policy_lib.do_variable_assignment(sn, body.expression, body.priority);
                     } else if (body.action_type === 'exitAssignment') {
-                        await policy_lib.exit_variable_assignment(sn, body.value, body.priority);
+                        await policy_lib.exit_variable_assignment(sn, body.expression, body.priority);
                     } else {
                         throw { err_msg: '未知的动作类型' };
                     }

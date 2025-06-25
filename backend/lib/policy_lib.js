@@ -218,7 +218,7 @@ module.exports = {
             await new_record.setTo_state(to_node);
         }
     },
-    updatePolicyInstanceVariable: async function (piId, pvId, value) {
+    updatePolicyInstanceVariable: async function (piId, pvId, expression) {
         const piv = await sq.models.policy_instance_variable.findOne({
             where: {
                 policyInstanceId: piId,
@@ -226,11 +226,11 @@ module.exports = {
             }
         });
         if (piv) {
-            piv.value = value;
+            piv.expression = expression;
             await piv.save();
         }
     },
-    do_variable_assignment: async function (state_node, priority, value) {
+    do_variable_assignment: async function (state_node, priority, expression) {
         let exist_record = await state_node.getDoAssignment({
             where: {
                 state_node_id: state_node.id,
@@ -241,12 +241,12 @@ module.exports = {
             let new_record = await state_node.createDoAssignment({
                 state_node_id: state_node.id,
                 priority: priority,
-                expression: value,
+                expression: expression,
             });
             await new_record.setPolicy_state_node(state_node);
         }
     },
-    enter_variable_assignment: async function (state_node, priority, value) {
+    enter_variable_assignment: async function (state_node, priority, expression) {
         let exist_record = await state_node.getEnterAssignment({
             where: {
                 state_node_id: state_node.id,
@@ -257,12 +257,12 @@ module.exports = {
             let new_record = await state_node.createEnterAssignment({
                 state_node_id: state_node.id,
                 priority: priority,
-                expression: value,
+                expression: expression,
             });
             await new_record.setPolicy_state_node(state_node);
         }
     },
-    exit_variable_assignment: async function (state_node, priority, value) { 
+    exit_variable_assignment: async function (state_node, priority, expression) { 
         let exist_record = await state_node.getExitAssignment({
             where: {
                 state_node_id: state_node.id,
@@ -273,7 +273,7 @@ module.exports = {
             let new_record = await state_node.createExitAssignment({
                 state_node_id: state_node.id,
                 priority: priority,
-                expression: value,
+                expression: expression,
             });
             await new_record.setPolicy_state_node(state_node);
         }
