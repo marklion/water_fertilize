@@ -218,6 +218,66 @@ module.exports = {
             await new_record.setTo_state(to_node);
         }
     },
+    updatePolicyInstanceVariable: async function (piId, pvId, value) {
+        const piv = await sq.models.policy_instance_variable.findOne({
+            where: {
+                policyInstanceId: piId,
+                policyVariableId: pvId
+            }
+        });
+        if (piv) {
+            piv.value = value;
+            await piv.save();
+        }
+    },
+    do_variable_assignment: async function (state_node, priority, value) {
+        let exist_record = await state_node.getDoAssignment({
+            where: {
+                state_node_id: state_node.id,
+                priority: priority,
+            }
+        });
+        if (exist_record.length == 0) {
+            let new_record = await state_node.createDoAssignment({
+                state_node_id: state_node.id,
+                priority: priority,
+                expression: value,
+            });
+            await new_record.setPolicy_state_node(state_node);
+        }
+    },
+    enter_variable_assignment: async function (state_node, priority, value) {
+        let exist_record = await state_node.getEnterAssignment({
+            where: {
+                state_node_id: state_node.id,
+                priority: priority,
+            }
+        }); 
+        if (exist_record.length == 0) {
+            let new_record = await state_node.createEnterAssignment({
+                state_node_id: state_node.id,
+                priority: priority,
+                expression: value,
+            });
+            await new_record.setPolicy_state_node(state_node);
+        }
+    },
+    exit_variable_assignment: async function (state_node, priority, value) { 
+        let exist_record = await state_node.getExitAssignment({
+            where: {
+                state_node_id: state_node.id,
+                priority: priority,
+            }        
+        });
+        if (exist_record.length == 0) {
+            let new_record = await state_node.createExitAssignment({
+                state_node_id: state_node.id,
+                priority: priority,
+                expression: value,
+            });
+            await new_record.setPolicy_state_node(state_node);
+        }
+    },
     del_transition: async function (transition_id) {
         let sq = db_opt.get_sq();
         let exist_record = await sq.models.policy_state_transition.findByPk(transition_id);

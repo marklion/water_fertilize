@@ -333,6 +333,40 @@ module.exports = {
                 return { result: true };
             },
         },
+        add_variable_assignment_action:{
+            name: '添加状态节点变量赋值动作',
+            description: '添加状态节点变量赋值动作',
+            is_write: true,
+            is_get_api: false,
+            params: {
+                sn_id: { type: Number, have_to: true, mean: '状态节点ID', example: 1 },
+                value: { type: String, have_to: true, mean: '赋值表达式', example: 'json表达式' },
+                action_type: { type: String, have_to: true, mean: '动作类型', example: 'enter' }, // enter, do, exit
+                priority: { type: Number, have_to: true, mean: '优先级', example: 1 },
+            },
+            result: {
+                result: { type: Boolean, mean: '操作结果', example: true },
+            },
+            func: async function (body, token) {
+                let company = await rbac_lib.get_company_by_token(token);
+                let sn = await db_opt.get_sq().models.policy_state_node.findByPk(body.sn_id, {
+                    include: [{ model: db_opt.get_sq().models.policy_template }]
+                });
+                if (sn && company && await company.hasPolicy_template(sn.policy_template)) {
+                    if (body.action_type === 'enterAssignment') {
+                        await policy_lib.enter_variable_assignment(sn, body.value, body.priority);
+                    } else if (body.action_type === 'doAssignment') {
+                        await policy_lib.do_variable_assignment(sn, body.value, body.priority);
+                    } else if (body.action_type === 'exitAssignment') {
+                        await policy_lib.exit_variable_assignment(sn, body.value, body.priority);
+                    } else {
+                        throw { err_msg: '未知的动作类型' };
+                    }
+                }
+               
+                return { result: true };
+            }
+        },
         get_all_modbus_read_meta: {
             name: '获取所有Modbus读取元数据',
             description: '获取所有Modbus读取元数据',

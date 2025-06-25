@@ -224,6 +224,14 @@ let db_opt = {
             },
             name: '策略实体变量',
         },
+        policy_variable_assignment: {
+            define: {
+                id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+                priority: { type:DataTypes.INTEGER },
+                expression: {type:DataTypes.STRING}
+            },
+            name: '变量赋值规则'
+        }
     },
     make_associate: function (_sq) {
         _sq.models.rbac_user.belongsToMany(_sq.models.rbac_role, { through: 'rbac_user_role' });
@@ -273,6 +281,12 @@ let db_opt = {
         _sq.models.policy_state_node.hasMany(_sq.models.policy_state_action, { as: 'enter_actions', foreignKey: 'enterStateId' });
         _sq.models.policy_state_node.hasMany(_sq.models.policy_state_action, { as: 'do_actions', foreignKey: 'doStateId' });
         _sq.models.policy_state_node.hasMany(_sq.models.policy_state_action, { as: 'exit_actions', foreignKey: 'exitStateId' });
+        _sq.models.policy_variable_assignment.belongsTo(_sq.models.policy_state_node, { as: 'enter_assignment', foreignKey: 'enterAssignmentId' });
+        _sq.models.policy_variable_assignment.belongsTo(_sq.models.policy_state_node, { as: 'do_assignment', foreignKey: 'doAssignmentId' });
+        _sq.models.policy_variable_assignment.belongsTo(_sq.models.policy_state_node, { as: 'exit_assignment', foreignKey: 'exitAssignmentId' });
+        _sq.models.policy_state_node.hasMany(_sq.models.policy_variable_assignment, { as: 'enterAssignment', foreignKey: 'enterAssignmentId' });
+        _sq.models.policy_state_node.hasMany(_sq.models.policy_variable_assignment, { as: 'doAssignment', foreignKey: 'doAssignmentId' });
+        _sq.models.policy_state_node.hasMany(_sq.models.policy_variable_assignment, { as: 'exitAssignment', foreignKey: 'exitAssignmentId' });
         _sq.models.policy_state_action.belongsTo(_sq.models.policy_action_node);
         _sq.models.policy_action_node.hasMany(_sq.models.policy_state_action);
         _sq.models.policy_state_transition.belongsTo(_sq.models.policy_state_node, { as: 'from_state', foreignKey: 'fromStateId' });

@@ -24,7 +24,66 @@ async function do_action(pi, psa) {
     await pia.device.setModbus_write_relay(pia.policy_action_node.modbus_write_relay);
     console.log(`执行动作: ${pia.policy_action_node.name}，设备: ${pia.device.name}`);
 }
+async function do_variableAssignments(pi, stateNode, actionType) {
+    try {
+        const assignments = await stateNode.getVariable_assignments({
+            order: [['priority', 'ASC']]
+        });
 
+        for (const assignment of assignments) {
+            const calculatedValue = await evaluateExpression(pi, assignment.expression);
+            await policy_lib.updatePolicyInstanceVariable(
+                pi.id,
+                assignment.policy_variable_id,
+                calculatedValue
+            );
+
+            console.log(`[变量赋值] 类型:${actionType} 变量ID:${assignment.policy_variable_id} 值:${calculatedValue}`);
+        }
+    } catch (error) {
+        console.error(`执行${actionType}类型变量赋值失败:`, error.message);
+    }
+}
+s
+async function evaluateExpression(pi, expression) {
+    if (expression.constant_value !== undefined) {
+        return Number(expression.constant_value);
+    }
+
+    if (expression.pds_id !== undefined) {
+        return await policy_lib.get_value_by_pi_and_pds(pi.id, expression.pds_id);
+    }
+
+    if (expression.duration !== undefined) {
+        return await policy_lib.get_continue_sec(pi.id, expression.duration);
+    }
+
+    if (expression.pv_id !== undefined) {
+        return await policy_lib.get_policy_instance_variable(pi.id, expression.pv_id);
+    }
+
+    if (expression.operator && expression.left && expression.right) {
+        const leftValue = await evaluateExpression(pi, expression.left);
+        const rightValue = await evaluateExpression(pi, expression.right);
+
+        switch (expression.operator) {
+            case '+':
+                return leftValue + rightValue;
+            case '-':
+                return leftValue - rightValue;
+            case '*':
+                return leftValue * rightValue;
+            case '/':
+                return leftValue / rightValue;
+            case '%':
+                return leftValue % rightValue;
+            default:
+                throw new Error(`不支持的操作符: ${expression.operator}`);
+        }
+    }
+
+    throw new Error('无法解析的表达式节点');
+}
 async function trigger_single_sm(pi_id) {
     let sq = db_opt.get_sq();
     let pi = await sq.models.policy_instance.findByPk(pi_id, {
@@ -61,6 +120,24 @@ async function trigger_single_sm(pi_id) {
                         separate: true,
                         order: [['priority', 'ASC']]
                     },
+                    {
+                        model: sq.models.policy_variable_assignment,
+                        as: 'doAssignments',
+                        separate: true,
+                        order: [['priority', 'ASC']]
+                    },
+                    {
+                        model: sq.models.policy_variable_assignment,
+                        as: 'enterAssignments',
+                        separate: true,
+                        order: [['priority', 'ASC']]
+                    },
+                    {
+                        model: sq.models.policy_variable_assignment,
+                        as: 'exitAssignments',
+                        separate: true,
+                        order: [['priority', 'ASC']]
+                    }
                 ]
             },
         ]
@@ -70,6 +147,9 @@ async function trigger_single_sm(pi_id) {
 
     for (let psa of pi.policy_state_node.do_actions) {
         await do_action(pi, psa);
+    }
+    for (let psa of pi.policy_state_node.doAssignments) {
+        await do_variableAssignments(pi, psa, 'do');
     }
     let state_change = false;
     for (let ft of pi.policy_state_node.from_transitions) {
@@ -83,6 +163,9 @@ async function trigger_single_sm(pi_id) {
             for (let psa of pi.policy_state_node.exit_actions) {
                 await do_action(pi, psa);
             }
+            for (let psa of pi.policy_state_node.exitAssignments) {
+                await do_variableAssignments(pi, psa, 'exit');
+            }
             await pi.setPolicy_state_node(to_state);
             console.log(`进入状态: ${to_state.name}`);
             let enter_actions = await to_state.getEnter_actions({
@@ -90,6 +173,9 @@ async function trigger_single_sm(pi_id) {
             });
             for (let psa of enter_actions) {
                 await do_action(pi, psa);
+            }
+            for (let psa of to_state.enterAssignments) {
+                await do_variableAssignments(pi, psa, 'enter');
             }
             break;
         }
