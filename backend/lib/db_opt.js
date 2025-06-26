@@ -281,12 +281,12 @@ let db_opt = {
         _sq.models.policy_state_node.hasMany(_sq.models.policy_state_action, { as: 'enter_actions', foreignKey: 'enterStateId' });
         _sq.models.policy_state_node.hasMany(_sq.models.policy_state_action, { as: 'do_actions', foreignKey: 'doStateId' });
         _sq.models.policy_state_node.hasMany(_sq.models.policy_state_action, { as: 'exit_actions', foreignKey: 'exitStateId' });
-        _sq.models.policy_variable_assignment.belongsTo(_sq.models.policy_state_node, { as: 'enter_assignment', foreignKey: 'enterAssignmentId' });
-        _sq.models.policy_variable_assignment.belongsTo(_sq.models.policy_state_node, { as: 'do_assignment', foreignKey: 'doAssignmentId' });
-        _sq.models.policy_variable_assignment.belongsTo(_sq.models.policy_state_node, { as: 'exit_assignment', foreignKey: 'exitAssignmentId' });
-        _sq.models.policy_state_node.hasMany(_sq.models.policy_variable_assignment, { as: 'enterAssignment', foreignKey: 'enterAssignmentId' });
-        _sq.models.policy_state_node.hasMany(_sq.models.policy_variable_assignment, { as: 'doAssignment', foreignKey: 'doAssignmentId' });
-        _sq.models.policy_state_node.hasMany(_sq.models.policy_variable_assignment, { as: 'exitAssignment', foreignKey: 'exitAssignmentId' });
+        _sq.models.policy_variable_assignment.belongsTo(_sq.models.policy_state_node, { as: 'enter_state', foreignKey: 'enterAssignmentId' });
+        _sq.models.policy_variable_assignment.belongsTo(_sq.models.policy_state_node, { as: 'do_state', foreignKey: 'doAssignmentId' });
+        _sq.models.policy_variable_assignment.belongsTo(_sq.models.policy_state_node, { as: 'exit_state', foreignKey: 'exitAssignmentId' });
+        _sq.models.policy_state_node.hasMany(_sq.models.policy_variable_assignment, { as: 'enter_variable_assignment', foreignKey: 'enterAssignmentId' });
+        _sq.models.policy_state_node.hasMany(_sq.models.policy_variable_assignment, { as: 'do_variable_assignment', foreignKey: 'doAssignmentId' });
+        _sq.models.policy_state_node.hasMany(_sq.models.policy_variable_assignment, { as: 'exit_variable_assignment', foreignKey: 'exitAssignmentId' });
         _sq.models.policy_state_action.belongsTo(_sq.models.policy_action_node);
         _sq.models.policy_action_node.hasMany(_sq.models.policy_state_action);
         _sq.models.policy_state_transition.belongsTo(_sq.models.policy_state_node, { as: 'from_state', foreignKey: 'fromStateId' });

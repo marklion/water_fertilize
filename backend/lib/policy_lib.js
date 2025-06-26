@@ -226,56 +226,47 @@ module.exports = {
             }
         });
         if (piv) {
-            piv.expression = expression;
+            piv.value = expression;
             await piv.save();
         }
     },
     do_variable_assignment: async function (state_node, priority, expression) {
-        let exist_record = await state_node.getDoAssignment({
+        let exist_record = await state_node.getDo_variable_assignments({
             where: {
-                state_node_id: state_node.id,
                 priority: priority,
             }
         });
         if (exist_record.length == 0) {
-            let new_record = await state_node.createDoAssignment({
-                state_node_id: state_node.id,
+            await state_node.createDo_variable_assignment({
                 priority: priority,
                 expression: expression,
             });
-            await new_record.setPolicy_state_node(state_node);
         }
     },
     enter_variable_assignment: async function (state_node, priority, expression) {
-        let exist_record = await state_node.getEnterAssignment({
+        let exist_record = await state_node.getEnter_variable_assignments({
             where: {
-                state_node_id: state_node.id,
                 priority: priority,
             }
         }); 
         if (exist_record.length == 0) {
-            let new_record = await state_node.createEnterAssignment({
-                state_node_id: state_node.id,
+            await state_node.createEnter_variable_assignment({
                 priority: priority,
                 expression: expression,
             });
-            await new_record.setPolicy_state_node(state_node);
         }
     },
     exit_variable_assignment: async function (state_node, priority, expression) { 
-        let exist_record = await state_node.getExitAssignment({
+        let exist_record = await state_node.getExit_variable_assignments({
             where: {
-                state_node_id: state_node.id,
                 priority: priority,
             }        
         });
         if (exist_record.length == 0) {
-            let new_record = await state_node.createExitAssignment({
-                state_node_id: state_node.id,
+            await state_node.createExit_variable_assignment({
                 priority: priority,
                 expression: expression,
             });
-            await new_record.setPolicy_state_node(state_node);
         }
     },
     del_transition: async function (transition_id) {

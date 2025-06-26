@@ -291,7 +291,7 @@ export default {
             
             await this.$send_req('/policy/add_variable_assignment_action', {
                 sn_id: parseInt(this.variableAssignment_form.sn_id),
-                expression: JSON.parse(this.variableAssignment_form.variable_assignment),
+                expression: this.variableAssignment_form.variable_assignment,
                 priority: parseInt(this.variableAssignment_form.priority),
                 action_type: this.variableAssignment_form.action_type
             });

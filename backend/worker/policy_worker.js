@@ -26,59 +26,84 @@ async function do_action(pi, psa) {
 }
 async function do_variableAssignments(pi, stateNode, actionType) {
     try {
-        const assignments = await stateNode.getVariable_assignments({
+        const assignment = await stateNode.getVariable_assignments({
             order: [['priority', 'ASC']]
         });
 
-        for (const assignment of assignments) {
-            const calculatedValue = await evaluateExpression(pi, assignment.expression);
+        const result = await evaluateExpression(pi, assignment.expression);
             await policy_lib.updatePolicyInstanceVariable(
-                pi.id,
-                assignment.policy_variable_id,
-                calculatedValue
+                    result.piId,
+                    result.pvId,
+                    result.value
             );
-
-            console.log(`[变量赋值] 类型:${actionType} 变量ID:${assignment.policy_variable_id} 值:${calculatedValue}`);
-        }
+        console.log(`[变量赋值] 类型:${actionType} 变量ID:${assignment.policy_variable_id} 值:${calculatedValue}`);
     } catch (error) {
         console.error(`执行${actionType}类型变量赋值失败:`, error.message);
     }
 }
 async function evaluateExpression(pi, expression) {
-    if (expression.constant_value !== undefined) {
-        return Number(expression.constant_value);
+
+    const expressionJson = typeof expression === 'string'
+        ? JSON.parse(expression)
+        : expression;
+
+    const piId = pi.id;
+    const pvId = expressionJson.pv_id; 
+
+    const context = {
+        value: undefined,
+        piId,
+        pvId,
+        ...(expressionJson.pv_id && { pvId: expressionJson.pv_id })
+    };
+
+    if (expressionJson.constant_value !== undefined) {
+        //处理常量
+        context.value = Number(expressionJson.constant_value);
+        return context;
     }
 
-    if (expression.pds_id !== undefined) {
-        return await policy_lib.get_value_by_pi_and_pds(pi.id, expression.pds_id);
+    if (expressionJson.pds_id !== undefined) {
+        context.value = await policy_lib.get_value_by_pi_and_pds(piId, expressionJson.pds_id);
+        return context;
     }
 
-    if (expression.duration !== undefined) {
-        return await policy_lib.get_continue_sec(pi.id, expression.duration);
+    if (expressionJson.duration !== undefined) {
+        context.value = await policy_lib.get_continue_sec(piId, expressionJson.duration);
+        return context;
     }
 
-    if (expression.pv_id !== undefined) {
-        return await policy_lib.get_policy_instance_variable(pi.id, expression.pv_id);
+    if(expression.offset_pds_id !== undefined) {
+        context.value = await policy_lib.get_state_value_offset(piId, expressionJson.offset_pds_id);
     }
 
-    if (expression.operator && expression.left && expression.right) {
-        const leftValue = await evaluateExpression(pi, expression.left);
-        const rightValue = await evaluateExpression(pi, expression.right);
+    if (expressionJson.operator && expressionJson.left && expressionJson.right) {
+        const leftResult = await evaluateExpression(pi, expressionJson.left);
+        const rightResult = await evaluateExpression(pi, expressionJson.right);
 
-        switch (expression.operator) {
+        switch (expressionJson.operator) {
             case '+':
-                return leftValue + rightValue;
+                context.value = leftResult.value + rightResult.value;
+                break;
             case '-':
-                return leftValue - rightValue;
+                context.value = leftResult.value - rightResult.value;
+                break;
             case '*':
-                return leftValue * rightValue;
+                context.value = leftResult.value * rightResult.value;
+                break;
             case '/':
-                return leftValue / rightValue;
+                context.value = leftResult.value / rightResult.value;
+                break;
             case '%':
-                return leftValue % rightValue;
+                context.value = leftResult.value % rightResult.value;
+                break;
             default:
-                throw new Error(`不支持的操作符: ${expression.operator}`);
+                throw new Error(`不支持的操作符: ${expressionJson.operator}`);
         }
+
+        context.pvId = context.pvId || leftResult.pvId || rightResult.pvId;
+
+        return context;
     }
 
     throw new Error('无法解析的表达式节点');
