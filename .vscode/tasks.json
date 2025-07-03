@@ -8,7 +8,8 @@
             "type": "shell",
             "command": "node",
             "args": [
-                "${workspaceFolder}/script/set_env_var.js"
+                "${workspaceFolder}/script/set_env_var.js",
+                "afqsaF4ax50vusJy"
             ],
             "options": {
                 "cwd": "${workspaceFolder}"

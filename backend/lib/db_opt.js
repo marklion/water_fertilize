@@ -10,10 +10,17 @@ function getDecimalValue(fieldName) {
         return value === null ? null : parseFloat(value);
     };
 }
+function getHostAndPort(dbHost) {
+    let real_host = dbHost.split(':')[0];
+    let real_port = dbHost.split(':')[1] || '3306';
+    return { real_host, real_port };
+}
 async function ensureDatabaseExists() {
     const { DB_HOST, DB_USER, DB_PASS, DB_NAME } = process.env;
+    let hp = getHostAndPort(DB_HOST);
     const connection = await mysql.createConnection({
-        host: DB_HOST,
+        host: hp.real_host,
+        port: hp.real_port,
         user: DB_USER,
         password: DB_PASS
     });
@@ -21,10 +28,12 @@ async function ensureDatabaseExists() {
     await connection.end();
 }
 function get_db_handle() {
+    let hp = getHostAndPort(process.env.DB_HOST);
     const sequelize = new Sequelize(process.env.DB_NAME, process.env.DB_USER, process.env.DB_PASS, {
         dialect: 'mysql',
         dialectModule: require('mysql2'),
-        host: process.env.DB_HOST,
+        host: hp.real_host,
+        port: hp.real_port,
         define: {
             freezeTableName: true,
             charset: 'utf8mb4'

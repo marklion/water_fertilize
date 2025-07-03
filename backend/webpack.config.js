@@ -13,10 +13,10 @@ if (!isDev) {
     });
 } else {
     envVars['PORT'] = JSON.stringify(43000); // 开发模式默认端口
-    envVars['DB_HOST'] = JSON.stringify('rm-2ze6222dda7fe8427eo.mysql.rds.aliyuncs.com'); // 开发模式默认数据库主机
-    envVars['DB_USER'] = JSON.stringify('sysadmin');
-    envVars['DB_PASS'] = JSON.stringify(process.env.DB_PASS || ''); // 开发模式默认数据库密码
-    envVars['DB_NAME'] = JSON.stringify('wf_test');
+    envVars['DB_HOST'] = JSON.stringify('mysql2.sqlpub.com:3307'); // 开发模式默认数据库主机
+    envVars['DB_USER'] = JSON.stringify('zczh_admin');
+    envVars['DB_PASS'] = JSON.stringify('afqsaF4ax50vusJy'); // 开发模式默认数据库密码
+    envVars['DB_NAME'] = JSON.stringify('demo_perpuse');
 }
 
 module.exports = {
