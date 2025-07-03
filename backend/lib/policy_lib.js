@@ -218,6 +218,57 @@ module.exports = {
             await new_record.setTo_state(to_node);
         }
     },
+    updatePolicyInstanceVariable: async function (piId, pvId, expression) {
+        const piv = await sq.models.policy_instance_variable.findOne({
+            where: {
+                policyInstanceId: piId,
+                policyVariableId: pvId
+            }
+        });
+        if (piv) {
+            piv.value = expression;
+            await piv.save();
+        }
+    },
+    do_variable_assignment: async function (state_node, priority, expression) {
+        let exist_record = await state_node.getDo_variable_assignments({
+            where: {
+                priority: priority,
+            }
+        });
+        if (exist_record.length == 0) {
+            await state_node.createDo_variable_assignment({
+                priority: priority,
+                expression: expression,
+            });
+        }
+    },
+    enter_variable_assignment: async function (state_node, priority, expression) {
+        let exist_record = await state_node.getEnter_variable_assignments({
+            where: {
+                priority: priority,
+            }
+        }); 
+        if (exist_record.length == 0) {
+            await state_node.createEnter_variable_assignment({
+                priority: priority,
+                expression: expression,
+            });
+        }
+    },
+    exit_variable_assignment: async function (state_node, priority, expression) { 
+        let exist_record = await state_node.getExit_variable_assignments({
+            where: {
+                priority: priority,
+            }        
+        });
+        if (exist_record.length == 0) {
+            await state_node.createExit_variable_assignment({
+                priority: priority,
+                expression: expression,
+            });
+        }
+    },
     del_transition: async function (transition_id) {
         let sq = db_opt.get_sq();
         let exist_record = await sq.models.policy_state_transition.findByPk(transition_id);

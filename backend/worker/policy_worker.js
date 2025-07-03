@@ -24,7 +24,90 @@ async function do_action(pi, psa) {
     await pia.device.setModbus_write_relay(pia.policy_action_node.modbus_write_relay);
     console.log(`执行动作: ${pia.policy_action_node.name}，设备: ${pia.device.name}`);
 }
+async function do_variableAssignments(pi, stateNode, actionType) {
+    try {
+        const assignment = await stateNode.getVariable_assignments({
+            order: [['priority', 'ASC']]
+        });
 
+        const result = await evaluateExpression(pi, assignment.expression);
+            await policy_lib.updatePolicyInstanceVariable(
+                    result.piId,
+                    result.pvId,
+                    result.value
+            );
+        console.log(`[变量赋值] 类型:${actionType} 变量ID:${assignment.policy_variable_id} 值:${calculatedValue}`);
+    } catch (error) {
+        console.error(`执行${actionType}类型变量赋值失败:`, error.message);
+    }
+}
+async function evaluateExpression(pi, expression) {
+
+    const expressionJson = typeof expression === 'string'
+        ? JSON.parse(expression)
+        : expression;
+
+    const piId = pi.id;
+    const pvId = expressionJson.pv_id; 
+
+    const context = {
+        value: undefined,
+        piId,
+        pvId,
+        ...(expressionJson.pv_id && { pvId: expressionJson.pv_id })
+    };
+
+    if (expressionJson.constant_value !== undefined) {
+        //处理常量
+        context.value = Number(expressionJson.constant_value);
+        return context;
+    }
+
+    if (expressionJson.pds_id !== undefined) {
+        context.value = await policy_lib.get_value_by_pi_and_pds(piId, expressionJson.pds_id);
+        return context;
+    }
+
+    if (expressionJson.duration !== undefined) {
+        context.value = await policy_lib.get_continue_sec(piId, expressionJson.duration);
+        return context;
+    }
+
+    if(expression.offset_pds_id !== undefined) {
+        context.value = await policy_lib.get_state_value_offset(piId, expressionJson.offset_pds_id);
+    }
+
+    if (expressionJson.operator && expressionJson.left && expressionJson.right) {
+        const leftResult = await evaluateExpression(pi, expressionJson.left);
+        const rightResult = await evaluateExpression(pi, expressionJson.right);
+
+        switch (expressionJson.operator) {
+            case '+':
+                context.value = leftResult.value + rightResult.value;
+                break;
+            case '-':
+                context.value = leftResult.value - rightResult.value;
+                break;
+            case '*':
+                context.value = leftResult.value * rightResult.value;
+                break;
+            case '/':
+                context.value = leftResult.value / rightResult.value;
+                break;
+            case '%':
+                context.value = leftResult.value % rightResult.value;
+                break;
+            default:
+                throw new Error(`不支持的操作符: ${expressionJson.operator}`);
+        }
+
+        context.pvId = context.pvId || leftResult.pvId || rightResult.pvId;
+
+        return context;
+    }
+
+    throw new Error('无法解析的表达式节点');
+}
 async function trigger_single_sm(pi_id) {
     let sq = db_opt.get_sq();
     let pi = await sq.models.policy_instance.findByPk(pi_id, {
@@ -61,6 +144,24 @@ async function trigger_single_sm(pi_id) {
                         separate: true,
                         order: [['priority', 'ASC']]
                     },
+                    {
+                        model: sq.models.policy_variable_assignment,
+                        as: 'doAssignments',
+                        separate: true,
+                        order: [['priority', 'ASC']]
+                    },
+                    {
+                        model: sq.models.policy_variable_assignment,
+                        as: 'enterAssignments',
+                        separate: true,
+                        order: [['priority', 'ASC']]
+                    },
+                    {
+                        model: sq.models.policy_variable_assignment,
+                        as: 'exitAssignments',
+                        separate: true,
+                        order: [['priority', 'ASC']]
+                    }
                 ]
             },
         ]
@@ -70,6 +171,9 @@ async function trigger_single_sm(pi_id) {
 
     for (let psa of pi.policy_state_node.do_actions) {
         await do_action(pi, psa);
+    }
+    for (let psa of pi.policy_state_node.doAssignments) {
+        await do_variableAssignments(pi, psa, 'do');
     }
     let state_change = false;
     for (let ft of pi.policy_state_node.from_transitions) {
@@ -83,6 +187,9 @@ async function trigger_single_sm(pi_id) {
             for (let psa of pi.policy_state_node.exit_actions) {
                 await do_action(pi, psa);
             }
+            for (let psa of pi.policy_state_node.exitAssignments) {
+                await do_variableAssignments(pi, psa, 'exit');
+            }
             await pi.setPolicy_state_node(to_state);
             console.log(`进入状态: ${to_state.name}`);
             let enter_actions = await to_state.getEnter_actions({
@@ -90,6 +197,9 @@ async function trigger_single_sm(pi_id) {
             });
             for (let psa of enter_actions) {
                 await do_action(pi, psa);
+            }
+            for (let psa of to_state.enterAssignments) {
+                await do_variableAssignments(pi, psa, 'enter');
             }
             break;
         }

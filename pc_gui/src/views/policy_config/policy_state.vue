@@ -18,6 +18,7 @@
                 </span>
             </el-descriptions-item>
             <template slot="extra" v-if="editable">
+                <el-button type="primary" size="mini" @click="prepare_add_varAssignment_action(single_state.id)">添加变量赋值</el-button>
                 <el-button type="primary" size="mini" @click="prepare_add_action(single_state.id)">添加动作</el-button>
                 <el-button type="danger" size="mini" @click="del_state(single_state)">删除状态</el-button>
             </template>
@@ -79,6 +80,27 @@
         <span slot="footer">
             <el-button @click="add_transition_diag= false">取消</el-button>
             <el-button type="primary" @click="add_transition">确定</el-button>
+        </span>
+    </el-dialog>
+    <el-dialog append-to-body title="新增变量赋值" :visible.sync="variableAssignment_diag" width="50%">
+        <el-form :model="variableAssignment_form" ref="variableAssignment_form" :rules="variableAssignment_rules">
+            <el-form-item label="优先级" prop="priority">
+                <el-input v-model="variableAssignment_form.priority"></el-input>
+            </el-form-item>
+            <el-form-item label="表达式" prop="expression">
+                <el-input v-model="variableAssignment_form.expression"></el-input>
+            </el-form-item>
+            <el-form-item label="动作类型" prop="action_type">
+                <el-select v-model="variableAssignment_form.action_type" placeholder="请选择动作类型">
+                    <el-option label="进入时赋值" value="enterAssignment"></el-option>
+                    <el-option label="持续时赋值" value="doAssignment"></el-option>
+                    <el-option label="退出时赋值" value="exitAssignment"></el-option>
+                </el-select>
+            </el-form-item>
+        </el-form>
+        <span slot="footer">
+            <el-button @click="variableAssignment_diag = false">取消</el-button>
+            <el-button type="primary" @click="add_variableAssignment_action">确定</el-button>
         </span>
     </el-dialog>
 </div>
@@ -156,6 +178,18 @@ export default {
                     { required: true, message: '请输入判断依据', trigger: 'blur' },
                 ],
             },
+            variableAssignment_diag: false,
+            variableAssignment_form: {
+                sn_id: 0,
+                priority: 0,
+                expression: '',
+                action_type: null, 
+            },
+            variableAssignment_rules: {
+                action_type: [
+                    { required: true, message: '请选择动作类型', trigger: 'change' }
+                ]
+            }
         };
     },
     methods: {
@@ -224,6 +258,15 @@ export default {
             this.action_form.action_type = null;
             this.add_action_diag = true;
         },
+        prepare_add_varAssignment_action: function (sn_id) {
+            this.variableAssignment_form = {
+                sn_id: sn_id,
+                variable_assignment: '',
+                action_type: null,
+                priority: 0
+            };
+            this.variableAssignment_diag = true;
+        },
         add_action: async function () {
             let valid = await this.$refs.action_form.validate();
             if (!valid) {
@@ -242,6 +285,17 @@ export default {
         refresh: function () {
             this.$emit('refresh');
         },
+        add_variableAssignment_action: async function () {
+            let valid = await this.$refs.variableAssignment_form.validate();
+            if (!valid) return;
+            
+            await this.$send_req('/policy/add_variable_assignment_action', {
+                sn_id: parseInt(this.variableAssignment_form.sn_id),
+                expression: this.variableAssignment_form.variable_assignment,
+                priority: parseInt(this.variableAssignment_form.priority),
+                action_type: this.variableAssignment_form.action_type
+            });
+        }
     },
 }
 </script>
