@@ -27,8 +27,19 @@
             <el-form-item label="驱动" prop="driver_id">
                 <select-search body_key="drivers" get_url="/resource_management/get_drivers" item_label="name" item_value="id" v-model="device_form.driver_id" :permission_array="['resource_management']"></select-search>
             </el-form-item>
-            <el-form-item label="连接key" prop="connection_key">
-                <el-input v-model="device_form.connection_key"></el-input>
+            <el-form-item label="连接方式" prop="connection_key.type">
+                <el-select v-model="device_form.connection_key.type" clearable placeholder="请选择">
+                    <el-option value="ip_lora" label="IP LoRa" />
+                </el-select>
+            </el-form-item>
+            <el-form-item label="主机名" prop="connection_key.ip">
+                <el-input v-model="device_form.connection_key.ip"></el-input>
+            </el-form-item>
+            <el-form-item label="主机端口" prop="connection_key.port">
+                <el-input v-model.number="device_form.connection_key.port"></el-input>
+            </el-form-item>
+            <el-form-item label="从站地址" prop="connection_key.prefix">
+                <el-input v-model="device_form.connection_key.prefix"></el-input>
             </el-form-item>
         </el-form>
         <span slot="footer">
@@ -54,7 +65,12 @@ export default {
             device_form: {
                 name: '',
                 driver_id: 0,
-                connection_key: '',
+                connection_key:{
+                    type: 'ip_lora',
+                    ip: '',
+                    port: '',
+                    prefix: ''
+                }
             },
             add_device_rules: {
                 name: [
@@ -64,8 +80,43 @@ export default {
                 driver_id: [
                     { required: true, message: '请选择驱动', trigger: 'change' }
                 ],
-                connection_key: [
-                    { required: true, message: '请输入连接标识', trigger: 'blur' },
+                'connection_key.ip': [
+                    { required: true, message: 'IP 或域名不能为空', trigger: 'blur' },
+                    { 
+                        validator: (rule, value, callback) => {
+                            const ipRegex = /^(\d{1,3}\.){3}\d{1,3}$|^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$/;
+                            if (!ipRegex.test(value)) {
+                                callback(new Error('请输入合法的 IP 地址或域名'));
+                            } else {
+                                callback();
+                            }
+                        }, trigger: 'blur'
+                    }
+                ],
+                'connection_key.port': [
+                    { required: true, message: '端口不能为空', trigger: 'blur' },
+                    {
+                        validator: (rule, value, callback) => {
+                            const portRegex = /^([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-5]{2}[0-3][0-5])$/;
+                            if (!portRegex.test(value)) {
+                                callback(new Error('请输入合法的端口号（1-65535）'));
+                            } else {
+                                callback();
+                            }
+                        }, trigger: 'blur'
+                    }
+                ],
+                'connection_key.prefix': [
+                    { required: true, message: '从站地址不能为空', trigger: 'blur' },
+                    {
+                        validator: (rule, value, callback) => {
+                            if (value.length !== 8) {
+                                callback(new Error('从站地址必须为 8 位字符'));
+                            } else {
+                                callback();
+                            }   
+                        }, trigger: 'blur'
+                    }
                 ]
             },
         };
@@ -80,7 +131,11 @@ export default {
                 if (!valid) {
                     return;
                 }
-                await this.$send_req('/resource_management/add_device', this.device_form);
+                const payload = {
+                    ...this.device_form,
+                    connection_key: JSON.stringify(this.device_form.connection_key)
+                };
+                await this.$send_req('/resource_management/add_device', payload);
                 this.add_device_diag = false;
                 this.refresh();
             } catch (error) {
