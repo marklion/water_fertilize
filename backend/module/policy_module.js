@@ -117,42 +117,6 @@ module.exports = {
                 return { result: true };
             },
         },
-        get_data_sources: {
-            name: '获取策略模板数据源',
-            description: '获取指定策略模板下的所有数据源',
-            is_write: false,
-            is_get_api: true,
-            params: {
-                pt_id: { type: Number, have_to: true, mean: '策略模板ID', example: 1 },
-            },
-            result: {
-                dataSources: {
-                    type: Array,
-                    mean: '数据源列表',
-                    explain: {
-                        id: { type: Number, mean: '数据源ID' },
-                        name: { type: String, mean: '数据源名称' }
-                    }
-                }
-            },
-            func: async function (body, token) {
-                let company = await rbac_lib.get_company_by_token(token);
-                let pt = await db_opt.get_sq().models.policy_template.findByPk(body.pt_id, {
-                    include: [{
-                        model: db_opt.get_sq().models.policy_data_source
-                    }]
-                });
-                if (!pt || !(await company.hasPolicy_template(pt))) {
-                    throw { err_msg: '没有权限获取策略模板数据源' };
-                }
-                return {
-                    dataSources: pt.policy_data_sources.map(ds => ({
-                        id: ds.id,
-                        name: ds.name
-                    }))
-                };
-            }
-        },
         add_action_node: {
             name: '添加动作节点到策略模板',
             description: '添加动作节点到策略模板',
