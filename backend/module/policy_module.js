@@ -117,6 +117,42 @@ module.exports = {
                 return { result: true };
             },
         },
+        get_data_sources: {
+            name: '获取策略模板数据源',
+            description: '获取指定策略模板下的所有数据源',
+            is_write: false,
+            is_get_api: true,
+            params: {
+                pt_id: { type: Number, have_to: true, mean: '策略模板ID', example: 1 },
+            },
+            result: {
+                dataSources: {
+                    type: Array,
+                    mean: '数据源列表',
+                    explain: {
+                        id: { type: Number, mean: '数据源ID' },
+                        name: { type: String, mean: '数据源名称' }
+                    }
+                }
+            },
+            func: async function (body, token) {
+                let company = await rbac_lib.get_company_by_token(token);
+                let pt = await db_opt.get_sq().models.policy_template.findByPk(body.pt_id, {
+                    include: [{
+                        model: db_opt.get_sq().models.policy_data_source
+                    }]
+                });
+                if (!pt || !(await company.hasPolicy_template(pt))) {
+                    throw { err_msg: '没有权限获取策略模板数据源' };
+                }
+                return {
+                    dataSources: pt.policy_data_sources.map(ds => ({
+                        id: ds.id,
+                        name: ds.name
+                    }))
+                };
+            }
+        },
         add_action_node: {
             name: '添加动作节点到策略模板',
             description: '添加动作节点到策略模板',
@@ -300,7 +336,7 @@ module.exports = {
                 });
                 let to_node = await db_opt.get_sq().models.policy_state_node.findByPk(body.to_node_id);
                 if (from_node && to_node && company && await company.hasPolicy_template(from_node.policy_template)) {
-                    await policy_lib.add_transition(from_node, to_node, body.compare_condition, body.priority);
+                    await policy_lib.add_transition(from_node, to_node, body.compare_condition, body.priority ,body.name);
                 }
                 else {
                     throw { err_msg: '没有权限添加状态转换' };
@@ -354,11 +390,11 @@ module.exports = {
                 });
                 if (sn && company && await company.hasPolicy_template(sn.policy_template)) {
                     if (body.action_type === 'enterAssignment') {
-                        await policy_lib.enter_variable_assignment(sn, body.expression, body.priority);
+                        await policy_lib.enter_variable_assignment(sn,  body.priority, body.expression);
                     } else if (body.action_type === 'doAssignment') {
-                        await policy_lib.do_variable_assignment(sn, body.expression, body.priority);
+                        await policy_lib.do_variable_assignment(sn,  body.priority, body.expression);
                     } else if (body.action_type === 'exitAssignment') {
-                        await policy_lib.exit_variable_assignment(sn, body.expression, body.priority);
+                        await policy_lib.exit_variable_assignment(sn , body.priority, body.expression);
                     } else {
                         throw { err_msg: '未知的动作类型' };
                     }

@@ -87,8 +87,9 @@ module.exports = {
                         {
                             model: sq.models.policy_state_transition,
                             as: 'from_transitions',
+                            attributes: ['id', 'name', 'priority', 'compare_condition'],
                             include: [
-                                { model: sq.models.policy_state_node, as: 'to_state' },
+                                { model: sq.models.policy_state_node, as: 'to_state', attributes: ['id', 'name'] },
                             ],
                             separate: true,
                             order: [['priority', 'ASC']]
@@ -204,7 +205,7 @@ module.exports = {
             await exist_record.destroy();
         }
     },
-    add_transition: async function (from_node, to_node, compare_condition, priority) {
+    add_transition: async function (from_node, to_node, compare_condition, priority, name) {
         let exist_record = await from_node.getFrom_transitions({
             where: {
                 compare_condition: compare_condition,
@@ -213,7 +214,8 @@ module.exports = {
         if (exist_record.length == 0) {
             let new_record = await from_node.createFrom_transition({
                 compare_condition: compare_condition,
-                priority: priority
+                priority: priority,
+                name: name
             });
             await new_record.setTo_state(to_node);
         }
@@ -663,6 +665,18 @@ module.exports = {
                 name: name,
             });
         }
+    },
+    get_policy_data_sources: async function(pt_id) {
+        const sq = db_opt.get_sq();
+        const policyTemplate = await sq.models.policy_template.findByPk(pt_id, {
+            include: [sq.models.policy_data_source]
+        });
+        if (!policyTemplate) return [];
+        // 返回标准化数据源列表
+        return policyTemplate.policy_data_sources.map(ds => ({
+            id: ds.id,
+            name: ds.name
+        }));
     },
     del_policy_variable: async function (pv_id) {
         let sq = db_opt.get_sq();

@@ -53,7 +53,16 @@
             <span>状态详情</span>
             <el-button v-if="$should_edit(focus_policy)" type="primary" size="small" @click="add_state">新增状态</el-button>
         </template>
-        <policy-state :editable="$should_edit(focus_policy)" :action_nodes="focus_policy.policy_action_nodes" :policy_state_nodes="focus_policy.policy_state_nodes" @refresh="refresh"></policy-state>
+        <policy-state
+            :editable="$should_edit(focus_policy)"
+            :action_nodes="focus_policy.policy_action_nodes || []"
+            :policy_state_nodes="focus_policy.policy_state_nodes || []"
+            :pt_id="focus_policy.id"
+            :template_variable_id="(focus_policy.policy_variables && focus_policy.policy_variables.length > 0) ? focus_policy.policy_variables[0].id : null"
+            :policyVariables="focus_policy.policy_variables || []"
+            :dataSources="focus_policy.policy_data_sources || []"
+            @refresh="refresh"
+        ></policy-state>
     </el-drawer>
     <el-dialog title="新增数据源" :visible.sync="add_ds_diag" width="50%">
         <el-form :model="ds_form" ref="ds_form" :rules="ds_form_rules">
