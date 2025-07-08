@@ -26,7 +26,7 @@
         <el-divider>状态转移</el-divider>
         <el-table :data="single_state.from_transitions" style="width: 100%">
             <el-table-column prop="priority" label="优先级" />
-            <el-table-column prop="compare_condition" label="判断依据" />
+            <el-table-column prop="name" label="转移描述" />
             <el-table-column label="目标状态">
                 <template slot-scope="scope">
                     <span>{{scope.row.to_state.name}}</span>
@@ -74,7 +74,12 @@
                 </el-select>
             </el-form-item>
             <el-form-item label="判断依据" prop="compare_condition">
-                <el-input v-model="transition_form.compare_condition"></el-input>
+                <ConditionGroup
+                    ref="conditionGroup"
+                    :group="transition_form.compare_condition"
+                    :dataSources="dataSources"
+                    :variables="policyVariables"
+                />
             </el-form-item>
         </el-form>
         <span slot="footer">
@@ -84,11 +89,20 @@
     </el-dialog>
     <el-dialog append-to-body title="新增变量赋值" :visible.sync="variableAssignment_diag" width="50%">
         <el-form :model="variableAssignment_form" ref="variableAssignment_form" :rules="variableAssignment_rules">
+            <el-form-item label="赋值目标变量" prop="pv_id">
+                <el-select v-model="variableAssignment_form.pv_id" placeholder="请选择变量">
+                    <el-option v-for="item in policyVariables" :key="item.id" :label="item.name" :value="item.id"/>
+                </el-select>
+            </el-form-item>
+            <el-form-item label="表达式" prop="value">
+                <ExpressionEditor
+                    v-model="variableAssignment_form.value"
+                    :variables="policyVariables"
+                    :dataSources="dataSources"
+                />
+            </el-form-item>
             <el-form-item label="优先级" prop="priority">
                 <el-input v-model="variableAssignment_form.priority"></el-input>
-            </el-form-item>
-            <el-form-item label="表达式" prop="expression">
-                <el-input v-model="variableAssignment_form.expression"></el-input>
             </el-form-item>
             <el-form-item label="动作类型" prop="action_type">
                 <el-select v-model="variableAssignment_form.action_type" placeholder="请选择动作类型">
@@ -107,6 +121,9 @@
 </template>
 
 <script>
+import ConditionGroup from '@/components/ConditionGroup.vue'
+import ExpressionEditor from '@/components/ExpressionEditor.vue'
+
 export default {
     name: 'PolicyState',
     props: {
@@ -126,6 +143,26 @@ export default {
             type: Boolean,
             default: false,
         },
+        pt_id: {
+            type: Number,
+            default: 0,
+        },
+        template_variable_id: {
+            type: [Number, String],
+            default: null
+        },
+        policyVariables: {
+            type: Array,
+            default: () => []
+        },
+        dataSources: {
+            type: Array,
+            default: () => []
+        }
+    },
+    components: {
+        ConditionGroup,
+        ExpressionEditor,
     },
     data: function () {
         return {
@@ -161,7 +198,10 @@ export default {
                 from_node_id: 0,
                 to_node_id: 0,
                 priority: 0,
-                compare_condition: '',
+                compare_condition: {
+                  logicType: 'and',
+                  conditions: []
+                },
             },
             transition_form_rules: {
                 from_node_id: [
@@ -174,18 +214,18 @@ export default {
                     { required: true, message: '请输入优先级', trigger: 'blur' },
                     { pattern: /^\d+$/, message: '优先级必须为数字', trigger: 'blur' },
                 ],
-                compare_condition: [
-                    { required: true, message: '请输入判断依据', trigger: 'blur' },
-                ],
             },
             variableAssignment_diag: false,
             variableAssignment_form: {
-                sn_id: 0,
+                pv_id: 3,
+                value: { operator: '+', left: {}, right: {} },
                 priority: 0,
-                expression: '',
-                action_type: null, 
+                action_type: null
             },
             variableAssignment_rules: {
+                pv_id: [
+                    { required: true, message: '请选择赋值目标变量', trigger: 'change' }
+                ],
                 action_type: [
                     { required: true, message: '请选择动作类型', trigger: 'change' }
                 ]
@@ -197,7 +237,10 @@ export default {
             this.transition_form.from_node_id = from_node_id;
             this.transition_form.to_node_id = null;
             this.transition_form.priority = 0;
-            this.transition_form.compare_condition = '';
+            this.transition_form.compare_condition = {
+              logicType: 'and',
+              conditions: []
+            };
             this.add_transition_diag = true;
         },
         add_transition: async function () {
@@ -205,11 +248,18 @@ export default {
             if (!valid) {
                 return;
             }
+            const description = this.transition_form.compare_condition.description || '';
+            if (!description.trim()) {
+                this.$message.error('请填写任务含义（description）');
+                return;
+            }
+            const compareConditionJson = this.$refs.conditionGroup.exportToJson();
             await this.$send_req('/policy/add_transition', {
                 from_node_id: parseInt(this.transition_form.from_node_id),
                 to_node_id: parseInt(this.transition_form.to_node_id),
                 priority: parseInt(this.transition_form.priority),
-                compare_condition: this.transition_form.compare_condition,
+                compare_condition: JSON.stringify(compareConditionJson),
+                name: description
             });
             this.prepare_add_transition(0);
             this.add_transition_diag = false;
@@ -260,10 +310,11 @@ export default {
         },
         prepare_add_varAssignment_action: function (sn_id) {
             this.variableAssignment_form = {
-                sn_id: sn_id,
-                variable_assignment: '',
+                pv_id: this.template_variable_id,
+                value: { operator: '+', left: {}, right: {} },
+                priority: 0,
                 action_type: null,
-                priority: 0
+                sn_id: sn_id
             };
             this.variableAssignment_diag = true;
         },
@@ -288,10 +339,12 @@ export default {
         add_variableAssignment_action: async function () {
             let valid = await this.$refs.variableAssignment_form.validate();
             if (!valid) return;
-            
             await this.$send_req('/policy/add_variable_assignment_action', {
                 sn_id: parseInt(this.variableAssignment_form.sn_id),
-                expression: this.variableAssignment_form.variable_assignment,
+                expression: JSON.stringify({
+                    pv_id: this.variableAssignment_form.pv_id,
+                    value: this.variableAssignment_form.value
+                }),
                 priority: parseInt(this.variableAssignment_form.priority),
                 action_type: this.variableAssignment_form.action_type
             });
@@ -332,5 +385,70 @@ export default {
 
 .el-divider {
     margin: 18px 0;
+}
+
+.assign-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 18px;
+    flex-wrap: wrap;
+    max-width: 100%;
+}
+.assign-var {
+    min-width: 160px;
+    max-width: 220px;
+}
+.assign-eq {
+    font-size: 28px;
+    font-weight: bold;
+    color: #409EFF;
+    margin: 0 8px;
+    line-height: 40px;
+}
+.assign-expr-box {
+    background: #fafdff;
+    border: 2px solid #d3e0ea;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    padding: 14px 12px 10px 12px;
+    min-width: 220px;
+    max-width: 80vw;
+    overflow-x: auto;
+    flex: 1;
+}
+.assign-row-simple {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    flex-wrap: wrap;
+    max-width: 100%;
+}
+.assign-var-simple {
+    min-width: 120px;
+    max-width: 180px;
+}
+.assign-eq-simple {
+    font-size: 22px;
+    font-weight: bold;
+    color: #409EFF;
+    margin: 0 6px;
+    line-height: 32px;
+}
+.assign-expr-simple {
+    min-width: 180px;
+    max-width: 70vw;
+    flex: 1;
+}
+.assign-col-simple {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-width: 100%;
+}
+.assign-eq-expr-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    width: 100%;
 }
 </style>

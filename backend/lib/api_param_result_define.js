@@ -1,3 +1,4 @@
+
 function make_aprd() {
     let policy_action_node_info = {
         id: { type: Number, mean: '动作节点ID', example: 1 },
@@ -85,6 +86,7 @@ function make_aprd() {
                 },
                 compare_condition: { type: String, mean: '比较条件', example: '>' },
                 priority: { type: Number, mean: '优先级', example: 1 },
+                name: { type: String, mean: '任务描述', example: '温度大于25度' },
             }
         },
     };
@@ -212,6 +214,11 @@ function make_aprd() {
             policy_state_nodes: {
                 type: Array,
                 mean: '策略状态节点列表',
+                explain: policy_state_node_info,
+            },
+            policy_state_transitions: {
+                type: Array,
+                mean: '策略转换列表',
                 explain: policy_state_node_info,
             },
         },

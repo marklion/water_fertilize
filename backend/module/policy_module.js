@@ -300,7 +300,7 @@ module.exports = {
                 });
                 let to_node = await db_opt.get_sq().models.policy_state_node.findByPk(body.to_node_id);
                 if (from_node && to_node && company && await company.hasPolicy_template(from_node.policy_template)) {
-                    await policy_lib.add_transition(from_node, to_node, body.compare_condition, body.priority);
+                    await policy_lib.add_transition(from_node, to_node, body.compare_condition, body.priority ,body.name);
                 }
                 else {
                     throw { err_msg: '没有权限添加状态转换' };
@@ -354,11 +354,11 @@ module.exports = {
                 });
                 if (sn && company && await company.hasPolicy_template(sn.policy_template)) {
                     if (body.action_type === 'enterAssignment') {
-                        await policy_lib.enter_variable_assignment(sn, body.expression, body.priority);
+                        await policy_lib.enter_variable_assignment(sn,  body.priority, body.expression);
                     } else if (body.action_type === 'doAssignment') {
-                        await policy_lib.do_variable_assignment(sn, body.expression, body.priority);
+                        await policy_lib.do_variable_assignment(sn,  body.priority, body.expression);
                     } else if (body.action_type === 'exitAssignment') {
-                        await policy_lib.exit_variable_assignment(sn, body.expression, body.priority);
+                        await policy_lib.exit_variable_assignment(sn , body.priority, body.expression);
                     } else {
                         throw { err_msg: '未知的动作类型' };
                     }
