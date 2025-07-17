@@ -12,6 +12,15 @@ module.exports = {
             });
         }
     },
+    update_driver: async function (driver_id, name, type_id) {
+        let sq = db_opt.get_sq();
+        let driver = await sq.models.driver.findByPk(driver_id);
+        if (driver) {
+            driver.name = name;
+            driver.type_id = type_id;
+            await driver.save();
+        }
+    },
     del_driver: async function (driver_id) {
         let sq = db_opt.get_sq();
         let driver = await sq.models.driver.findByPk(driver_id);
@@ -59,6 +68,16 @@ module.exports = {
             });
         }
     },
+    update_modbus_read_meta: async function (meta_id, title, reg_address, data_type) { 
+        let sq = db_opt.get_sq();
+        let meta = await sq.models.modbus_read_meta.findByPk(meta_id);
+        if (meta) {
+            meta.title = title;
+            meta.reg_address = reg_address;
+            meta.data_type = data_type;
+            await meta.save();
+        }
+    },
     del_modbus_read_meta: async function (meta_id) {
         let sq = db_opt.get_sq();
         let meta = await sq.models.modbus_read_meta.findByPk(meta_id);
@@ -83,6 +102,16 @@ module.exports = {
         let relay = await sq.models.modbus_write_relay.findByPk(relay_id);
         if (relay) {
             await relay.destroy();
+        }
+    },
+    update_modbus_write_relay: async function (relay_id, action, reg_address, value) {
+        let sq = db_opt.get_sq();
+        let relay = await sq.models.modbus_write_relay.findByPk(relay_id);
+        if (relay) {
+            relay.action = action;
+            relay.reg_address = reg_address;
+            relay.value = value;
+            await relay.save();
         }
     },
     add_device: async function (driver, name, connection_key, company) {
@@ -155,6 +184,16 @@ module.exports = {
         return {
             devices: ret.rows,
             total: ret.count,
+        }
+    },
+    update_device: async function (device_id, driver_id, name, connection_key) {
+        let sq = db_opt.get_sq();
+        let device = await sq.models.device.findByPk(device_id);
+        if (device) {
+            device.driverId = driver_id;
+            device.name = name;
+            device.connection_key = connection_key;
+            await device.save();
         }
     },
 };

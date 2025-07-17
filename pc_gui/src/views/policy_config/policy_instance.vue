@@ -37,6 +37,7 @@
                             <el-button size="mini" type="success" @click="prepare_add_pi">新增</el-button>
                         </template>
                         <template slot-scope="scope">
+                            <el-button size="mini" type="warning" @click="update_pi(scope.row)">编辑</el-button>
                             <el-button size="mini" type="danger" @click="del_pi(scope.row)">删除</el-button>
                         </template>
                     </el-table-column>
@@ -44,7 +45,7 @@
             </div>
         </template>
     </page-content>
-    <el-dialog title="新增策略实例" :visible.sync="add_pi_diag" width="50%">
+    <el-dialog :title="isEditPI ? '编辑策略实例' : '新增策略实例'" :visible.sync="add_pi_diag" width="50%">
         <el-form :model="pi_form" ref="pi_form" :rules="pi_form_rules">
             <el-form-item label="名称" prop="name">
                 <el-input v-model="pi_form.name"></el-input>
@@ -95,6 +96,8 @@ export default {
     data: function () {
         return {
             add_pi_diag: false,
+            isEditPI: false,
+            editingPIId: null,
             pi_form: {
                 name: '',
                 pt_id: null,
@@ -228,21 +231,52 @@ export default {
         },
         prepare_add_pi: function () {
             this.add_pi_diag = true;
+            this.isEditPI = false;
+            this.editingPIId = null;
             this.pi_form.name = '';
             this.pi_form.pt_id = null;
         },
         refresh: function () {
             this.$refs.all_pis.refresh();
         },
-        add_pi: async function () {
+        update_pi: function (pi) {
+            this.isEditPI = true;
+            this.editingPIId = pi.id;
+            let pt_id = null;
+            if (pi.pt_id !== undefined && pi.pt_id !== null) {
+                pt_id = Number(pi.pt_id);
+            } else if (pi.policy_template && pi.policy_template.id) {
+                pt_id = Number(pi.policy_template.id);
+            } else if (pi.policyTemplateId) {
+                pt_id = Number(pi.policyTemplateId);
+            }
+            this.pi_form = {
+                name: pi.name,
+                pt_id: pt_id,
+            };
+            this.add_pi_diag = true;
+        },
+        async add_pi() {
             let valid = await this.$refs.pi_form.validate();
             if (!valid) {
                 return;
             }
-            await this.$send_req('/policy/add_policy_instance', {
+            if (!this.pi_form.pt_id) {
+                this.$message.error('请选择策略模板');
+                return;
+            }
+            const payload = {
                 name: this.pi_form.name,
-                pt_id: this.pi_form.pt_id,
-            });
+                pt_id: Number(this.pi_form.pt_id),
+            };
+            if (this.isEditPI && this.editingPIId) {
+                await this.$send_req('/policy/update_policy_instance', {
+                    pi_id: this.editingPIId,
+                    ...payload
+                });
+            } else {
+                await this.$send_req('/policy/add_policy_instance', payload);
+            }
             this.refresh();
             this.prepare_add_pi();
             this.add_pi_diag = false;

@@ -1,7 +1,7 @@
 <template>
 <div class="policy_state_show">
     <div class="single_state_show" v-for="single_state in policy_state_nodes" :key="single_state.id">
-        <el-descriptions :title="single_state.name" direction="vertical" :column="3" border>
+        <el-descriptions :title="single_state.name" direction="vertical" :column="3" border >
             <el-descriptions-item label="进入动作">
                 <span v-for="single_action in single_state.enter_actions" :key="single_action.id">
                     <el-tag :closable="editable" @close="del_action(single_action)" size="mini" type="primary">{{state_action_show(single_action)}}</el-tag>
@@ -18,10 +18,34 @@
                 </span>
             </el-descriptions-item>
             <template slot="extra" v-if="editable">
-                <el-button type="primary" size="mini" @click="prepare_add_varAssignment_action(single_state.id)">添加变量赋值</el-button>
                 <el-button type="primary" size="mini" @click="prepare_add_action(single_state.id)">添加动作</el-button>
                 <el-button type="danger" size="mini" @click="del_state(single_state)">删除状态</el-button>
             </template>
+        </el-descriptions>
+        <el-divider>变量赋值</el-divider>
+        <el-button type="primary" size="mini" style="margin-right: 8px;float: right;margin-bottom: 8px;" @click="prepare_add_varAssignment_action(single_state.id)">添加变量赋值</el-button>
+        <el-descriptions direction="vertical" :column="3" border style="margin-bottom: 16px;" >
+            <el-descriptions-item label="进入时赋值动作">
+                <span v-for="single_assignment in single_state.enter_variable_assignments" :key="single_assignment.id">
+                    <el-tag :closable="editable" @close="del_variable_assignment(single_assignment)" size="mini" type="success">
+                        {{ state_variable_assignment_show(single_assignment) }}
+                    </el-tag>
+                </span>
+            </el-descriptions-item>
+            <el-descriptions-item label="持续时赋值动作">
+                <span v-for="single_assignment in single_state.do_variable_assignments" :key="single_assignment.id">
+                    <el-tag :closable="editable" @close="del_variable_assignment(single_assignment)" size="mini" type="warning">
+                        {{ state_variable_assignment_show(single_assignment) }}
+                    </el-tag>
+                </span>
+            </el-descriptions-item>
+            <el-descriptions-item label="离开时赋值动作">
+                <span v-for="single_assignment in single_state.exit_variable_assignments" :key="single_assignment.id">
+                    <el-tag :closable="editable" @close="del_variable_assignment(single_assignment)" size="mini" type="info">
+                        {{ state_variable_assignment_show(single_assignment) }}
+                    </el-tag>
+                </span>
+            </el-descriptions-item>
         </el-descriptions>
         <el-divider>状态转移</el-divider>
         <el-table :data="single_state.from_transitions" style="width: 100%">
@@ -32,12 +56,13 @@
                     <span>{{scope.row.to_state.name}}</span>
                 </template>
             </el-table-column>
-            <el-table-column v-if="editable">
+            <el-table-column v-if="editable" width="150px">
                 <template slot="header">
                     <el-button size="mini" type="success" @click="prepare_add_transition(single_state.id)">新增</el-button>
                 </template>
                 <template slot-scope="scope">
-                    <el-button size="mini" type="danger" @click="del_transition(scope.row)">删除</el-button>
+                  <el-button size="mini" type="warning" @click="update_transition(scope.row, single_state.id)">编辑</el-button>
+                  <el-button size="mini" type="danger" @click="del_transition(scope.row)">删除</el-button>
                 </template>
             </el-table-column>
         </el-table>
@@ -63,7 +88,7 @@
             <el-button type="primary" @click="add_action">确定</el-button>
         </span>
     </el-dialog>
-    <el-dialog append-to-body title="新增转移条件" :visible.sync="add_transition_diag" width="50%">
+    <el-dialog append-to-body :title="isEditTransition ? '编辑转移条件' : '新增转移条件'" :visible.sync="add_transition_diag" width="50%">
         <el-form :model="transition_form" ref="transition_form" :rules="transition_form_rules">
             <el-form-item label="优先级" prop="priority">
                 <el-input v-model="transition_form.priority"></el-input>
@@ -167,6 +192,7 @@ export default {
     data: function () {
         return {
             add_action_diag: false,
+            isEditTransition: false,
             action_form: {
                 sn_id: 0,
                 an_id: 0,
@@ -229,11 +255,14 @@ export default {
                 action_type: [
                     { required: true, message: '请选择动作类型', trigger: 'change' }
                 ]
-            }
+            },
+            currentStateId: null,
+            add_varAssignment_diag: false,
         };
     },
     methods: {
         prepare_add_transition: function (from_node_id) {
+            this.isEditTransition = true;
             this.transition_form.from_node_id = from_node_id;
             this.transition_form.to_node_id = null;
             this.transition_form.priority = 0;
@@ -242,28 +271,40 @@ export default {
               conditions: []
             };
             this.add_transition_diag = true;
+            
         },
         add_transition: async function () {
-            let valid = await this.$refs.transition_form.validate();
-            if (!valid) {
-                return;
-            }
-            const description = this.transition_form.compare_condition.description || '';
-            if (!description.trim()) {
-                this.$message.error('请填写任务含义（description）');
-                return;
-            }
-            const compareConditionJson = this.$refs.conditionGroup.exportToJson();
-            await this.$send_req('/policy/add_transition', {
-                from_node_id: parseInt(this.transition_form.from_node_id),
-                to_node_id: parseInt(this.transition_form.to_node_id),
-                priority: parseInt(this.transition_form.priority),
-                compare_condition: JSON.stringify(compareConditionJson),
-                name: description
+        let valid = await this.$refs.transition_form.validate();
+        if (!valid) {
+            return;
+        }
+        const description = this.transition_form.compare_condition.description || '';
+        if (!description.trim()) {
+            this.$message.error('请填写任务含义（description）');
+            return;
+        }
+        const compareConditionJson = this.$refs.conditionGroup.exportToJson();
+        if (this.isEditTransition) {
+            await this.$send_req('/policy/update_transition', {
+            transition_id: this.transition_form.id,
+            from_node_id: parseInt(this.transition_form.from_node_id),
+            to_node_id: parseInt(this.transition_form.to_node_id),
+            priority: parseInt(this.transition_form.priority),
+            compare_condition: JSON.stringify(compareConditionJson),
+            name: description
             });
-            this.prepare_add_transition(0);
-            this.add_transition_diag = false;
-            this.refresh();
+        } else {
+            await this.$send_req('/policy/add_transition', {
+            from_node_id: parseInt(this.transition_form.from_node_id),
+            to_node_id: parseInt(this.transition_form.to_node_id),
+            priority: parseInt(this.transition_form.priority),
+            compare_condition: JSON.stringify(compareConditionJson),
+            name: description
+            });
+        }
+        this.prepare_add_transition(0);
+        this.add_transition_diag = false;
+        this.refresh();
         },
         del_transition: async function (transition) {
             await this.$confirm('确定删除转移条件吗？', '提示', {
@@ -300,6 +341,47 @@ export default {
         },
         state_action_show: function (sa) {
             return sa.priority + ':' + sa.policy_action_node.name;
+        },
+        update_transition: function (transition,single_state_id) {
+            this.isEditTransition = true;
+            const backendCond = typeof transition.compare_condition === 'string'
+                ? JSON.parse(transition.compare_condition)
+                : transition.compare_condition;
+            this.transition_form = {
+                ...transition,
+                from_node_id: single_state_id,
+                to_node_id: transition.to_state.id,
+                priority: transition.priority,
+                compare_condition: this.backendToComponentGroup(backendCond, transition.name),
+            };
+            this.add_transition_diag = true;
+        },
+        backendToComponentGroup(obj, description) {
+            const logicType = obj.and ? 'and' : 'or';
+            const arr = obj[logicType];
+            return {
+                logicType,
+                description: description,
+                conditions: arr.map(item => {
+                    if (item.and || item.or) {
+                        // 嵌套组
+                        return this.backendToComponentGroup(item);
+                    } else {
+                        // 叶子条件
+                        const leftType = Object.keys(item.left)[0];
+                        const leftValue = item.left[leftType];
+                        const rightType = Object.keys(item.right)[0];
+                        const rightValue = item.right[rightType];
+                        return {
+                            leftType,
+                            leftValue,
+                            operator: item.operator,
+                            rightType,
+                            rightValue
+                        };
+                    }
+                })
+            };
         },
         prepare_add_action: function (sn_id) {
             this.action_form.sn_id = sn_id;
@@ -348,7 +430,75 @@ export default {
                 priority: parseInt(this.variableAssignment_form.priority),
                 action_type: this.variableAssignment_form.action_type
             });
-        }
+            this.variableAssignment_diag = false;
+        },
+        del_variable_assignment: async function (assignment) {
+            await this.$confirm('确定删除变量赋值 ' + this.state_variable_assignment_show(assignment) + ' 吗？', '提示', {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+                type: 'warning',
+            });
+            await this.$send_req('/policy/del_variable_assignment', {
+                assignment_id: assignment.id,
+            })
+            this.refresh();
+        },
+        renderExpression: function(expr, policyVariables = []) {
+            if (typeof expr === 'string') {
+                try {
+                    expr = JSON.parse(expr);
+                } catch (e) {
+                    return expr; 
+                }
+            }
+            if (expr === null || expr === undefined) return '';
+
+            if (expr.constant_value !== undefined) return expr.constant_value;
+
+            if (expr.pv_id !== undefined && expr.value === undefined) {
+                let varName = '';
+                if (Array.isArray(policyVariables)) {
+                    let found = policyVariables.find(v => v.id === expr.pv_id);
+                    varName = found ? found.name : `变量${expr.pv_id}`;
+                }
+                return varName || `变量${expr.pv_id}`;
+            }
+
+            if (expr.pv_id !== undefined && expr.value !== undefined) {
+                let varName = '';
+                if (Array.isArray(policyVariables)) {
+                    let found = policyVariables.find(v => v.id === expr.pv_id);
+                    varName = found ? found.name : `变量${expr.pv_id}`;
+                }
+                return `${varName} = ${this.renderExpression(expr.value, policyVariables)}`;
+            }
+
+            if (expr.operator && expr.left && expr.right) {
+                return `(${this.renderExpression(expr.left, policyVariables)} ${expr.operator} ${this.renderExpression(expr.right, policyVariables)})`;
+            }
+
+            if (expr.value !== undefined) return this.renderExpression(expr.value, policyVariables);
+
+            return JSON.stringify(expr);
+        },
+        state_variable_assignment_show: function (assignment) {
+            let varName = assignment.policy_variable ? assignment.policy_variable.name : (assignment.var_name || assignment.variable_name || '变量');
+            let expr = assignment.expression || assignment.value || assignment.expr || '';
+            let exprShow = this.renderExpression(expr, this.policyVariables);
+            let priority = assignment.priority !== undefined ? assignment.priority : '';
+            let typeLabel = '';
+            if (assignment.action_type === 'enterAssignment' || assignment.action_type === 'enter') typeLabel = '[进入]';
+            if (assignment.action_type === 'doAssignment' || assignment.action_type === 'do') typeLabel = '[持续]';
+            if (assignment.action_type === 'exitAssignment' || assignment.action_type === 'exit') typeLabel = '[离开]';
+            let show = '';
+            if (typeof exprShow === 'string' && exprShow.startsWith(varName + ' = ')) {
+                show = `${typeLabel}${exprShow}`;
+            } else {
+                show = `${typeLabel}${varName} = ${exprShow}`;
+            }
+            if(priority !== '') show += ` (优先级:${priority})`;
+            return show;
+        },
     },
 }
 </script>
