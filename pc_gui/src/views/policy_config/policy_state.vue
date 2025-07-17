@@ -262,7 +262,7 @@ export default {
     },
     methods: {
         prepare_add_transition: function (from_node_id) {
-            this.isEditTransition = true;
+            this.isEditTransition = false;
             this.transition_form.from_node_id = from_node_id;
             this.transition_form.to_node_id = null;
             this.transition_form.priority = 0;
