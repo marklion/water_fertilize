@@ -12,6 +12,7 @@
                             <el-button size="mini" type="success" @click="add_user_diag = true">新增</el-button>
                         </template>
                         <template slot-scope="scope">
+                            <el-button size="mini" type="warning" @click="update_user(scope.row)">编辑</el-button>
                             <el-button size="mini" type="danger" @click="delete_user(scope.row)">删除</el-button>
                         </template>
                     </el-table-column>
@@ -34,6 +35,23 @@
             <el-button type="primary" @click="add_user">确定</el-button>
         </span>
     </el-dialog>
+    <el-dialog title="编辑用户" :visible.sync="edit_user_diag" width="50%">
+        <el-form :model="user_form" ref="user_form" :rules="add_user_rules">
+            <el-form-item label="选择公司">
+                <select-search body_key="companies" get_url="/global/get_companies" item_label="name" item_value="id" v-model="selected_company_id" :permission_array="['global']"></select-search>
+            </el-form-item>
+            <el-form-item label="用户名" prop="name">
+                <el-input v-model="user_form.name"></el-input>
+            </el-form-item>
+            <el-form-item label="电话" prop="phone">
+                <el-input v-model="user_form.phone"></el-input>
+            </el-form-item>
+        </el-form>
+        <span slot="footer">
+            <el-button @click="edit_user_diag = false">取消</el-button>
+            <el-button type="primary" @click="submit_update_user">确定</el-button>
+        </span>
+    </el-dialog>
 </div>
 </template>
 
@@ -49,11 +67,13 @@ export default {
     data: function () {
         return {
             add_user_diag: false,
+            edit_user_diag: false,
             user_form: {
                 name: '',
                 phone: '',
             },
             selected_company_id: 0,
+            editing_user_id: null,
             add_user_rules: {
                 name: [
                     { required: true, message: '请输入用户名', trigger: 'blur' },
@@ -81,9 +101,33 @@ export default {
                     phone: this.user_form.phone,
                     company_id: this.selected_company_id
                 });
-                await this.$send_req
                 this.refresh();
                 this.add_user_diag = false;
+            } catch (error) {
+                console.log(error);
+            }
+        },
+        update_user: function(user) {
+            this.editing_user_id = user.id;
+            this.user_form = {
+                name: user.name,
+                phone: user.phone
+            };
+            this.selected_company_id = user.company ? user.company.id : 0;
+            this.edit_user_diag = true;
+        },
+        submit_update_user: async function() {
+            try {
+                let valid = await this.$refs.user_form.validate();
+                if (!valid) return;
+                await this.$send_req('/global/update_user', {
+                    user_id: this.editing_user_id,
+                    name: this.user_form.name,
+                    phone: this.user_form.phone,
+                    company_id: this.selected_company_id
+                });
+                this.refresh();
+                this.edit_user_diag = false;
             } catch (error) {
                 console.log(error);
             }

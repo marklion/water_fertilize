@@ -24,6 +24,33 @@ module.exports = {
                 return { result: true };
             }
         },
+        update_policy_template: { 
+            name: '更新策略模板',
+            description: '更新策略模板名称',
+            is_write: true,
+            is_get_api: false,
+            params: {
+                pt_id: { type: Number, have_to: true, mean: '策略模板ID', example: 1 },
+                name: { type: String, have_to: true, mean: '新策略模板名称', example: '新模板名' },
+            },
+            result: {
+                result: { type: Boolean, mean: '更新结果', example: true },
+            },
+            func: async function (body, token) {
+                let company = await rbac_lib.get_company_by_token(token);
+                console.log(company);
+                let pt = await db_opt.get_sq().models.policy_template.findByPk(body.pt_id);
+                console.log(pt);
+                if (!pt) {
+                    throw { err_msg: '未找到对应的策略模板' };
+                }
+                if (!company || !(await company.hasPolicy_template(pt))) {
+                    throw { err_msg: '没有权限更新该策略模板' };
+                }
+                await policy_lib.update_policy_template(body.pt_id, body.name);
+                return { result: true };
+            }
+        },
         del_policy_template: {
             name: '删除策略模板',
             description: '删除策略模板',
@@ -308,6 +335,35 @@ module.exports = {
                 return { result: true };
             },
         },
+        update_transition: { 
+            name: '更新状态转换',
+            description: '更新状态转换',
+            is_get_api: false,
+            params: {
+                transition_id: { type: Number, have_to: true, mean: '转移ID', example: 123 },
+                from_node_id: { type: Number, have_to: true, mean: '来源状态节点ID', example: 1 },
+                to_node_id: { type: Number, have_to: true, mean: '目标状态节点ID', example: 2 },
+                compare_condition: { type: String, have_to: true, mean: '转换条件', example: '温度 > 30' },
+                priority: { type: Number, have_to: true, mean: '优先级', example: 1 },
+                name: { type: String, have_to: false, mean: '转移描述', example: 'xxx' }
+            },
+            func: async function (body, token) {
+                let company = await rbac_lib.get_company_by_token(token);
+                if (!company) {
+                    throw {
+                        err_msg: '没有权限',
+                    }
+                }else{
+                    let from_node = await db_opt.get_sq().models.policy_state_node.findByPk(body.from_node_id, {
+                        include: [{ model: db_opt.get_sq().models.policy_template }]
+                    });
+                    let to_node = await db_opt.get_sq().models.policy_state_node.findByPk(body.to_node_id);
+                    await policy_lib.update_transition(from_node, to_node, body.transition_id, body.compare_condition, body.priority, body.name);
+                    return { result: true };
+                }
+            },
+            is_write: true,
+        },
         del_transition: {
             name: '从状态节点删除状态转换',
             description: '从状态节点删除状态转换',
@@ -352,18 +408,48 @@ module.exports = {
                 let sn = await db_opt.get_sq().models.policy_state_node.findByPk(body.sn_id, {
                     include: [{ model: db_opt.get_sq().models.policy_template }]
                 });
-                if (sn && company && await company.hasPolicy_template(sn.policy_template)) {
-                    if (body.action_type === 'enterAssignment') {
-                        await policy_lib.enter_variable_assignment(sn,  body.priority, body.expression);
-                    } else if (body.action_type === 'doAssignment') {
-                        await policy_lib.do_variable_assignment(sn,  body.priority, body.expression);
-                    } else if (body.action_type === 'exitAssignment') {
-                        await policy_lib.exit_variable_assignment(sn , body.priority, body.expression);
-                    } else {
-                        throw { err_msg: '未知的动作类型' };
-                    }
+                if (!sn) throw { err_msg: '状态节点不存在' };
+                if (!company || !(await company.hasPolicy_template(sn.policy_template))) {
+                    throw { err_msg: '没有权限' };
                 }
-               
+                if (body.action_type === 'enterAssignment') {
+                    await policy_lib.enter_variable_assignment(sn, body.priority, body.expression);
+                } else if (body.action_type === 'doAssignment') {
+                    await policy_lib.do_variable_assignment(sn, body.priority, body.expression);
+                } else if (body.action_type === 'exitAssignment') {
+                    await policy_lib.exit_variable_assignment(sn, body.priority, body.expression);
+                } else {
+                    throw { err_msg: '未知的动作类型' };
+                }
+                return { result: true };
+            }
+        },
+        del_variable_assignment: {
+            name: '删除状态节点变量赋值动作',
+            description: '删除状态节点变量赋值动作',
+            is_write: true,
+            is_get_api: false,
+            params: {
+                assignment_id: { type: Number, have_to: true, mean: '变量赋值ID', example: 1 },
+            },
+            result: {
+                result: { type: Boolean, mean: '操作结果', example: true },
+            },
+            func: async function (body, token) {
+                let company = await rbac_lib.get_company_by_token(token);
+                let assignment = await db_opt.get_sq().models.policy_variable_assignment.findByPk(body.assignment_id, {
+                    include: [
+                        { model: db_opt.get_sq().models.policy_state_node, as: 'enter_state', include: [{ model: db_opt.get_sq().models.policy_template }] },
+                        { model: db_opt.get_sq().models.policy_state_node, as: 'do_state', include: [{ model: db_opt.get_sq().models.policy_template }] },
+                        { model: db_opt.get_sq().models.policy_state_node, as: 'exit_state', include: [{ model: db_opt.get_sq().models.policy_template }] }
+                    ]
+                });
+                let state_node = assignment.enter_state || assignment.do_state || assignment.exit_state;
+                if (assignment && company && state_node && state_node.policy_template && await company.hasPolicy_template(state_node.policy_template)) {
+                    await policy_lib.del_variable_assignment(body.assignment_id);
+                } else {
+                    throw { err_msg: '没有权限删除变量赋值' };
+                }
                 return { result: true };
             }
         },
@@ -484,6 +570,32 @@ module.exports = {
                 ))) {
                     await policy_lib.add_policy_instance(pt, body.name, company);
                 }
+                return { result: true };
+            }
+        },
+        update_policy_instance: {
+            name: '更新策略实例',
+            description: '更新策略实例',
+            is_write: true,
+            is_get_api: false,
+            params: {
+                pi_id: { type: Number, have_to: true, mean: '策略实例ID', example: 1 },
+                name: { type: String, have_to: true, mean: '策略实例名称', example: '实例A' },
+                pt_id: { type: Number, have_to: true, mean: '策略模板ID', example: 1 },
+            },
+            result: {
+                result: { type: Boolean, mean: '操作结果', example: true },
+            },
+            func: async function (body, token) {
+                let company = await rbac_lib.get_company_by_token(token);
+                let pi = await db_opt.get_sq().models.policy_instance.findByPk(body.pi_id);
+                if (!pi) {
+                    throw { err_msg: '未找到对应的策略实例' };
+                }
+                if (!company || !(await company.hasPolicy_instance(pi))) {
+                    throw { err_msg: '没有权限更新该策略实例' };
+                }
+                await policy_lib.update_policy_instance(pi, body.name, body.pt_id);
                 return { result: true };
             }
         },
