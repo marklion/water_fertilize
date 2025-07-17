@@ -328,6 +328,8 @@ let db_opt = {
         _sq.models.policy_instance.hasMany(_sq.models.policy_instance_variable);
         _sq.models.policy_instance_variable.belongsTo(_sq.models.policy_variable);
         _sq.models.policy_variable.hasMany(_sq.models.policy_instance_variable);
+        _sq.models.policy_variable_assignment.belongsTo(_sq.models.policy_variable);
+        _sq.models.policy_variable.hasMany(_sq.models.policy_variable_assignment);
     },
     add_del_hook: function (sq, model_name) {
         sq.models[model_name].addHook('beforeDestroy', async (instance, options) => {

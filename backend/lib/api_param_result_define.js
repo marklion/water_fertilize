@@ -1,4 +1,3 @@
-
 function make_aprd() {
     let policy_action_node_info = {
         id: { type: Number, mean: '动作节点ID', example: 1 },
@@ -53,6 +52,15 @@ function make_aprd() {
             },
         },
     };
+    let policy_variable_assignment_info = {
+        id: { type: Number, mean: '变量赋值ID', example: 1 },
+        expression: { type: String, mean: '表达式', example: '12' },
+        policy_variable: {
+            type: Object,
+            mean: '策略变量',
+            explain: policy_variable_info,
+        },
+    };
     let policy_state_node_info = {
         id: { type: Number, mean: '状态节点ID', example: 1 },
         name: { type: String, mean: '状态节点名称', example: '温度正常' },
@@ -88,6 +96,21 @@ function make_aprd() {
                 priority: { type: Number, mean: '优先级', example: 1 },
                 name: { type: String, mean: '任务描述', example: '温度大于25度' },
             }
+        },
+        enter_variable_assignments: {
+            type: Array,
+            mean: '进入时变量赋值列表',
+            explain: policy_variable_assignment_info,
+        },
+        do_variable_assignments: {
+            type: Array,
+            mean: '持续时变量赋值列表',
+            explain: policy_variable_assignment_info,
+        },
+        exit_variable_assignments: {
+            type: Array,
+            mean: '离开时变量赋值列表',
+            explain: policy_variable_assignment_info,
         },
     };
     return {

@@ -12,6 +12,16 @@ module.exports = {
             });
         }
     },
+    update_policy_template: async function (pt_id, name) {
+        let sq = db_opt.get_sq();
+        let record = await sq.models.policy_template.findOne({
+            where: { id: pt_id },
+        });
+        if (record) {
+            record.name = name;
+            await record.save();
+        }
+    },
     del_policy_template: async function (pt_id) {
         let sq = db_opt.get_sq();
         let exist_record = await sq.models.policy_template.findByPk(pt_id);
@@ -94,6 +104,26 @@ module.exports = {
                             separate: true,
                             order: [['priority', 'ASC']]
                         },
+                        {
+                            model: sq.models.policy_variable_assignment,
+                            as: 'enter_variable_assignments',
+                            attributes: ['id', 'expression', 'priority'],
+                            include: [{ model: sq.models.policy_variable }],
+                            order: [['priority', 'ASC'], ['id', 'ASC']]
+                        },
+                        {
+                            model: sq.models.policy_variable_assignment,
+                            as: 'do_variable_assignments',
+                            attributes: ['id', 'expression', 'priority'],
+                            include: [{ model: sq.models.policy_variable }],
+                            order: [['priority', 'ASC'], ['id', 'ASC']]
+                        },
+                        {
+                            model: sq.models.policy_variable_assignment,
+                            as: 'exit_variable_assignments',
+                            attributes: ['id', 'expression', 'priority'],
+                            include: [{ model: sq.models.policy_variable }],
+                            order: [['priority', 'ASC'], ['id', 'ASC']]                        },
                     ]
                 },
             ],
@@ -220,6 +250,21 @@ module.exports = {
             await new_record.setTo_state(to_node);
         }
     },
+    update_transition: async function (from_node, to_node, transition_id, compare_condition, priority, name) {
+        // 获取所有 from_node 的转移
+        let transitions = await from_node.getFrom_transitions();
+        // 找到要更新的那条
+        let record = transitions.find(tran => tran.id === transition_id);
+        if (record) {
+            record.compare_condition = compare_condition;
+            record.priority = priority;
+            record.name = name;
+            await record.setTo_state(to_node);
+            await record.save();
+        } else {
+            throw new Error('未找到要更新的状态转移');
+        }
+    },
     updatePolicyInstanceVariable: async function (piId, pvId, expression) {
         const piv = await sq.models.policy_instance_variable.findOne({
             where: {
@@ -233,6 +278,7 @@ module.exports = {
         }
     },
     do_variable_assignment: async function (state_node, priority, expression) {
+        let exprObj = typeof expression === 'string' ? JSON.parse(expression) : expression;
         let exist_record = await state_node.getDo_variable_assignments({
             where: {
                 priority: priority,
@@ -242,10 +288,12 @@ module.exports = {
             await state_node.createDo_variable_assignment({
                 priority: priority,
                 expression: expression,
+                policyVariableId: exprObj.pv_id
             });
         }
     },
     enter_variable_assignment: async function (state_node, priority, expression) {
+        let exprObj = typeof expression === 'string' ? JSON.parse(expression) : expression;
         let exist_record = await state_node.getEnter_variable_assignments({
             where: {
                 priority: priority,
@@ -255,10 +303,12 @@ module.exports = {
             await state_node.createEnter_variable_assignment({
                 priority: priority,
                 expression: expression,
+                policyVariableId: exprObj.pv_id
             });
         }
     },
     exit_variable_assignment: async function (state_node, priority, expression) {
+        let exprObj = typeof expression === 'string' ? JSON.parse(expression) : expression;
         let exist_record = await state_node.getExit_variable_assignments({
             where: {
                 priority: priority,
@@ -268,6 +318,7 @@ module.exports = {
             await state_node.createExit_variable_assignment({
                 priority: priority,
                 expression: expression,
+                policyVariableId: exprObj.pv_id
             });
         }
     },
@@ -699,5 +750,37 @@ module.exports = {
         }
 
         return ret;
+    },
+    update_policy_instance: async function (pi, name, pt_id) {
+        pi.name = name;
+        pi.policyTemplateId = pt_id;
+        await pi.save();
+    },
+    del_variable_assignment: async function (assignment_id) {
+        let sq = db_opt.get_sq();
+        let assignment = await sq.models.policy_variable_assignment.findByPk(assignment_id);
+        if (assignment) {
+            await assignment.destroy();
+        }
+    },
+    get_variable_assignments: async function (sn) {
+        // 分别查三组 assignment，避免调用不存在的方法
+        let enter_variable_assignments = await sn.getEnter_variable_assignments({
+            include: [{ model: db_opt.get_sq().models.policy_variable }],
+            order: [['priority', 'ASC'], ['id', 'ASC']]
+        });
+        let do_variable_assignments = await sn.getDo_variable_assignments({
+            include: [{ model: db_opt.get_sq().models.policy_variable }],
+            order: [['priority', 'ASC'], ['id', 'ASC']]
+        });
+        let exit_variable_assignments = await sn.getExit_variable_assignments({
+            include: [{ model: db_opt.get_sq().models.policy_variable }],
+            order: [['priority', 'ASC'], ['id', 'ASC']]
+        });
+        return {
+            enter_variable_assignments,
+            do_variable_assignments,
+            exit_variable_assignments
+        };
     },
 };

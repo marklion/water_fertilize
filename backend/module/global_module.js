@@ -31,6 +31,32 @@ module.exports = {
                 return { result: true };
             },
         },
+        update_company: { 
+            name: '更新公司',
+            description: '更新公司名称',
+            need_rbac: true,
+            is_write: true,
+            is_get_api: false,
+            params: {
+                company_id: { type: Number, have_to: true, mean: '公司ID', example: 1 },
+                name: { type: String, have_to: true, mean: '新公司名称', example: '新公司A' },
+            },
+            result: {
+                result: { type: Boolean, mean: '更新结果', example: true },
+            },
+            func: async function (body, token) {
+                let sq = db_opt.get_sq();
+                let ret = { result: true };
+                let company = await sq.models.company.findByPk(body.company_id);
+                if (company) {
+                    company.name = body.name;
+                    await company.save();
+                } else {
+                    ret.result = false;
+                }
+                return ret;
+            }
+        },
         delete_company: {
             name: '删除公司',
             description: '删除公司',
@@ -283,6 +309,38 @@ module.exports = {
                 }
                 if (ret.token === '') {
                     throw { err_msg: '用户未找到' };
+                }
+                return ret;
+            }
+        },
+        update_user: {
+            name: '更新用户',
+            description: '更新用户信息',
+            need_rbac: true,
+            is_write: true,
+            is_get_api: false,
+            params: {
+                user_id: { type: Number, have_to: true, mean: '用户ID', example: 1 },
+                name: { type: String, have_to: true, mean: '用户名', example: '张三' },
+                phone: { type: String, have_to: true, mean: '电话', example: '18911992582' },
+                company_id: { type: Number, have_to: false, mean: '公司ID', example: 1 },
+            },
+            result: {
+                result: { type: Boolean, mean: '更新结果', example: true },
+            },
+            func: async function (body, token) {
+                let sq = db_opt.get_sq();
+                let ret = { result: true };
+                let user = await sq.models.rbac_user.findByPk(body.user_id);
+                if (user) {
+                    user.name = body.name;
+                    user.phone = body.phone;
+                    if (body.company_id) {
+                        user.companyId = body.company_id;
+                    }
+                    await user.save();
+                } else {
+                    ret.result = false;
                 }
                 return ret;
             }

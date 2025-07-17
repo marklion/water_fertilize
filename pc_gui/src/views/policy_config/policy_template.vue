@@ -40,6 +40,7 @@
                             <el-button size="mini" type="success" @click="add_pt">新增</el-button>
                         </template>
                         <template slot-scope="scope">
+                            <el-button size="mini" type="warning" @click="update_pt(scope)">编辑</el-button>
                             <el-button v-if="$should_edit(scope.row)" size="mini" type="danger" @click="del_pt(scope)">删除</el-button>
                             <el-button size="mini" type="primary" @click="open_state_page(scope.row)">展开状态</el-button>
                         </template>
@@ -266,6 +267,25 @@ export default {
                 name: pt_name,
             });
             this.refresh();
+        },
+        update_pt: async function (scope) { 
+            try {
+                let result = await this.$prompt('请输入新的策略模板名称', '编辑策略模板', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    inputValue: scope.row.name,
+                    inputPattern: /^.{2,50}$/,
+                    inputErrorMessage: '名称长度在2到50个字符之间'
+                });
+                console.log(scope.row);
+                await this.$send_req('/policy/update_policy_template', {
+                    pt_id: scope.row.id,
+                    name: result.value
+                });
+                this.refresh();
+            } catch (error) {
+                // 用户取消或出错
+            }
         },
         del_pt: async function (scope) {
             let name = scope.row.name;
