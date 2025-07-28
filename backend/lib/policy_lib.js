@@ -250,7 +250,7 @@ module.exports = {
             where: {
                 priority: priority,
             }
-        }); 
+        });
         if (exist_record.length == 0) {
             await state_node.createEnter_variable_assignment({
                 priority: priority,
@@ -258,11 +258,11 @@ module.exports = {
             });
         }
     },
-    exit_variable_assignment: async function (state_node, priority, expression) { 
+    exit_variable_assignment: async function (state_node, priority, expression) {
         let exist_record = await state_node.getExit_variable_assignments({
             where: {
                 priority: priority,
-            }        
+            }
         });
         if (exist_record.length == 0) {
             await state_node.createExit_variable_assignment({
@@ -609,6 +609,7 @@ module.exports = {
             } else if (value_obj.hasOwnProperty('pv_id')) {
                 ret = await module.exports.get_policy_instance_variable(policyInstance.id, value_obj.pv_id);
             }
+            ret = parseFloat(ret);
             return ret;
         }
 

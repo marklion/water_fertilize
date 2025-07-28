@@ -24,19 +24,15 @@ async function do_action(pi, psa) {
     await pia.device.setModbus_write_relay(pia.policy_action_node.modbus_write_relay);
     console.log(`执行动作: ${pia.policy_action_node.name}，设备: ${pia.device.name}`);
 }
-async function do_variableAssignments(pi, stateNode, actionType) {
+async function do_variableAssignments(pi, assignment, actionType) {
     try {
-        const assignment = await stateNode.getVariable_assignments({
-            order: [['priority', 'ASC']]
-        });
-
         const result = await evaluateExpression(pi, assignment.expression);
             await policy_lib.updatePolicyInstanceVariable(
                     result.piId,
                     result.pvId,
                     result.value
             );
-        console.log(`[变量赋值] 类型:${actionType} 变量ID:${assignment.policy_variable_id} 值:${calculatedValue}`);
+        console.log(`[变量赋值] 类型:${actionType} 变量ID:${assignment.policyVariableId} 值:${result.value}`);
     } catch (error) {
         console.error(`执行${actionType}类型变量赋值失败:`, error.message);
     }
@@ -48,7 +44,7 @@ async function evaluateExpression(pi, expression) {
         : expression;
 
     const piId = pi.id;
-    const pvId = expressionJson.pv_id; 
+    const pvId = expressionJson.pv_id;
 
     const context = {
         value: undefined,
@@ -146,19 +142,19 @@ async function trigger_single_sm(pi_id) {
                     },
                     {
                         model: sq.models.policy_variable_assignment,
-                        as: 'doAssignments',
+                        as: 'do_variable_assignments',
                         separate: true,
                         order: [['priority', 'ASC']]
                     },
                     {
                         model: sq.models.policy_variable_assignment,
-                        as: 'enterAssignments',
+                        as: 'enter_variable_assignments',
                         separate: true,
                         order: [['priority', 'ASC']]
                     },
                     {
                         model: sq.models.policy_variable_assignment,
-                        as: 'exitAssignments',
+                        as: 'exit_variable_assignments',
                         separate: true,
                         order: [['priority', 'ASC']]
                     }
@@ -172,7 +168,7 @@ async function trigger_single_sm(pi_id) {
     for (let psa of pi.policy_state_node.do_actions) {
         await do_action(pi, psa);
     }
-    for (let psa of pi.policy_state_node.doAssignments) {
+    for (let psa of pi.policy_state_node.do_variable_assignments) {
         await do_variableAssignments(pi, psa, 'do');
     }
     let state_change = false;
@@ -187,7 +183,7 @@ async function trigger_single_sm(pi_id) {
             for (let psa of pi.policy_state_node.exit_actions) {
                 await do_action(pi, psa);
             }
-            for (let psa of pi.policy_state_node.exitAssignments) {
+            for (let psa of pi.policy_state_node.exit_variable_assignments) {
                 await do_variableAssignments(pi, psa, 'exit');
             }
             await pi.setPolicy_state_node(to_state);
@@ -198,7 +194,8 @@ async function trigger_single_sm(pi_id) {
             for (let psa of enter_actions) {
                 await do_action(pi, psa);
             }
-            for (let psa of to_state.enterAssignments) {
+            let enter_variable_assignments = await to_state.getEnter_variable_assignments({});
+            for (let psa of enter_variable_assignments) {
                 await do_variableAssignments(pi, psa, 'enter');
             }
             break;
