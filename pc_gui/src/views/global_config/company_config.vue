@@ -10,6 +10,7 @@
                             <el-button size="mini" type="success" @click="create_company">新增</el-button>
                         </template>
                         <template slot-scope="scope">
+                            <el-button size="mini" type="warning" @click="update_company(scope.row)">编辑</el-button>
                             <el-button size="mini" type="danger" @click="delete_company(scope.row)">删除</el-button>
                         </template>
                     </el-table-column>
@@ -44,6 +45,24 @@ export default {
                 });
                 await this.$send_req('/global/create_company', {
                     name: company_name.value
+                });
+                this.refresh();
+            } catch (error) {
+                console.log(error);
+            }
+        },
+        update_company: async function (company) { 
+            try {
+                let result = await this.$prompt('请输入新的公司名称', '编辑公司', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    inputValue: company.name,
+                    inputPattern: /^[\u4e00-\u9fa5a-zA-Z0-9_]+$/,
+                    inputErrorMessage: '公司名称只能包含中文、英文、数字和下划线'
+                });
+                await this.$send_req('/global/update_company', {
+                    company_id: company.id,
+                    name: result.value
                 });
                 this.refresh();
             } catch (error) {

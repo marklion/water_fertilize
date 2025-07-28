@@ -51,6 +51,25 @@ module.exports = {
                 return { result: true };
             },
         },
+        update_driver: {
+            name: "修改驱动",
+            description: "修改驱动",
+            is_write: true,
+            is_get_api: false,
+            params: {
+                driver_id: { type:Number, mean: "驱动ID", have_to: true },
+                name: { type:String, mean: "驱动名称", have_to: true },
+                type_id: { type:Number,mean: "驱动类型ID", have_to: true }
+            },
+            result: { 
+                result:{type: Boolean, mean: '操作结果', example: true}
+             },
+            func: async function (body, token) {
+                let company = await rbac_lib.get_company_by_token(token);
+                await driver_lib.update_driver(body.driver_id, body.name, body.type_id, company);
+                return { result: true };
+            },
+        },
         get_drivers:{
             name:'获取驱动列表',
             description: '获取驱动列表',
@@ -95,6 +114,35 @@ module.exports = {
                 }
                 return { result: true };
             },
+        },
+        update_driver_meta:{
+            name:'更新驱动元数据',
+            description: '更新驱动元数据',
+            is_write: true,
+            is_get_api: false,
+            params:{
+                meta_id: {type: Number, have_to:true, mean:'元数据ID', example:1},
+                driver_id:{type: Number, have_to:true, mean:'驱动ID', example:1},
+                title:{type: String, have_to:true, mean:'元数据标题', example:'温度'},
+                reg_address:{type: Number, have_to:true, mean:'寄存器地址', example:100},
+                data_type:{type: String, have_to:true, mean:'数据类型', example:'int16'},
+            },
+            result:{
+                result:{type: Boolean, mean:'操作结果', example:true}
+            },
+            func:async function(body, token){ 
+                let meta = await db_opt.get_sq().models.modbus_read_meta.findByPk(body.meta_id);
+                if (!meta) {
+                    throw { err_msg: '未找到对应的元数据' };
+                }
+                let driver = await meta.getDriver();
+                let company = await rbac_lib.get_company_by_token(token);
+                if (!company || !driver || !(await company.hasDriver(driver))) {
+                    throw { err_msg: '没有权限更新驱动元数据' };
+                }
+                await driver_lib.update_modbus_read_meta(meta.id, body.title, body.reg_address, body.data_type);
+                return { result: true };
+            }
         },
         del_driver_meta:{
             name:'删除驱动元数据',
@@ -152,6 +200,35 @@ module.exports = {
                         err_msg: '没有权限添加驱动继电器',
                     }
                 }
+                return { result: true };
+            }
+        },
+        update_driver_relay:{
+            name:'更新驱动继电器',
+            description: '更新驱动继电器',
+            is_write: true,
+            is_get_api: false,
+            params:{
+                relay_id: {type: Number, have_to:true, mean:'继电器ID', example:1},
+                driver_id:{type: Number, have_to:true, mean:'驱动ID', example:1},
+                action:{type: String, have_to:true, mean:'动作', example:'开'},
+                reg_address:{type: Number, have_to:true, mean:'寄存器地址', example:200},
+                value:{type: String, have_to:true, mean:'值', example:'1'},
+            },
+            result:{
+                result:{type: Boolean, mean:'操作结果', example:true}
+            },
+            func:async function(body, token){ 
+                let relay = await db_opt.get_sq().models.modbus_write_relay.findByPk(body.relay_id);
+                if (!relay) {
+                    throw { err_msg: '未找到对应的继电器' };
+                }
+                let driver = await relay.getDriver();
+                let company = await rbac_lib.get_company_by_token(token);
+                if (!company || !driver || !(await company.hasDriver(driver))) {
+                    throw { err_msg: '没有权限更新驱动继电器' };
+                }
+                await driver_lib.update_modbus_write_relay(relay.id, body.action, body.reg_address, body.value);
                 return { result: true };
             }
         },
@@ -255,6 +332,33 @@ module.exports = {
                 let company = await rbac_lib.get_company_by_token(token);
                 let ret = await driver_lib.get_devices(company, body.pageNo);
                 return ret;
+            }
+        },
+        update_device:{
+            name:'更新设备',
+            description: '更新设备',
+            is_write: true,
+            is_get_api: false,
+            params:{
+                device_id: {type: Number, have_to:true, mean:'设备ID', example:1},
+                driver_id:{type: Number, have_to:true, mean:'驱动ID', example:1},
+                name:{type: String, have_to:true, mean:'设备名称', example:'设备A'},
+                connection_key:{type: String, have_to:true, mean:'连接密钥', example:'123456'},
+            },
+            result:{
+                result:{type: Boolean, mean:'操作结果', example:true}
+            },
+            func:async function(body, token){ 
+                let device = await db_opt.get_sq().models.device.findByPk(body.device_id);
+                if (!device) {
+                    throw { err_msg: '未找到对应的设备' };
+                }
+                let company = await rbac_lib.get_company_by_token(token);
+                if (!company || !(await company.hasDevice(device))) {
+                    throw { err_msg: '没有权限更新该设备' };
+                }
+                await driver_lib.update_device(device.id, body.driver_id, body.name, body.connection_key);
+                return { result: true };
             }
         },
     }
